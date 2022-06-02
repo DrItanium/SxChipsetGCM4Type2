@@ -45,10 +45,20 @@ public:
     }
 public:
     static size_t write(uint32_t address, byte *buf, size_t capacity) noexcept {
+        Serial.print("write(0x");
+        Serial.print(address, HEX);
+        Serial.print(", buf, 0x");
+        Serial.print(capacity, HEX);
+        Serial.println(");");
         theRam_.setAbsolutePosition(address);
         return theRam_.write(buf, capacity);
     }
     static size_t read(uint32_t address, byte *buf, size_t capacity) noexcept {
+        Serial.print("read(0x");
+        Serial.print(address, HEX);
+        Serial.print(", buf, 0x");
+        Serial.print(capacity, HEX);
+        Serial.println(");");
         theRam_.setAbsolutePosition(address);
         return theRam_.read(buf, capacity);
     }

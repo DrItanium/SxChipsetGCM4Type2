@@ -143,7 +143,7 @@ public:
 
     }
     void clear() noexcept {
-        for (auto way : ways_) {
+        for (auto& way : ways_) {
             way.clear();
         }
         bits_ = 0;
@@ -229,7 +229,7 @@ public:
 
     }
     void clear() noexcept {
-        for (auto way : ways_) {
+        for (auto& way : ways_) {
             way.clear();
         }
         bits_ = 0;
@@ -317,7 +317,7 @@ public:
 
     }
     void clear() noexcept {
-        for (auto way : ways_) {
+        for (auto& way : ways_) {
             way.clear();
         }
         bits_ = 0;
@@ -391,6 +391,10 @@ public:
         for (byte i = 0; i < NumberOfWays; ++i) {
             if (ways_[i].matches(theAddress)) {
                 updateFlags(i);
+                if constexpr (debugMode) {
+                    Serial.print("\tMatch against index: ");
+                    Serial.println(i);
+                }
                 return ways_[i];
             } else if (firstInvalid == NumberOfWays && !ways_[i].isValid()) {
                 firstInvalid = i;
@@ -403,7 +407,7 @@ public:
 
     }
     void clear() noexcept {
-        for (auto way : ways_) {
+        for (auto& way : ways_) {
             way.clear();
         }
         bits_ = 0;
