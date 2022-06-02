@@ -92,13 +92,11 @@ void waitForCycleUnlock() noexcept {
     // don't pulse READY, instead just pull it low, the interrupt latency on the 4809 is horrible
     // so we just pull Ready high as soon as we get the next phase in.
     //DigitalPin<i960Pinout::Ready>::pulse();
-    Serial.println("\tAsserting Ready!");
     DigitalPin<i960Pinout::Ready>::assertPin();
     // make sure that we just wait for the gating signal before continuing
     while (DigitalPin<i960Pinout::InTransaction>::isAsserted() && DigitalPin<i960Pinout::BurstNext>::isDeasserted());
     bool outcome = DigitalPin<i960Pinout::InTransaction>::isDeasserted();
     DigitalPin<i960Pinout::Ready>::deassertPin();
-    Serial.println("\tDeasserting Ready!");
     return outcome;
 }
 constexpr auto IncrementAddress = true;

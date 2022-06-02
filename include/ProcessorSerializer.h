@@ -94,7 +94,7 @@ public:
     static void newDataCycle() noexcept {
         full32BitUpdate<inDebugMode>();
         //delayMicroseconds(10); // this gets rid of a chipset halt problem that I'm not sure where is coming from
-        Serial.print(F("Address 0x")); Serial.println(address_.getWholeValue(), HEX);
+        //Serial.print(F("Address 0x")); Serial.println(address_.getWholeValue(), HEX);
         if (ProcessorInterface::isReadOperation()) {
             setupDataLinesForRead();
             if constexpr (inDebugMode) {
