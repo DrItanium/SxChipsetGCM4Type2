@@ -92,11 +92,13 @@ void waitForCycleUnlock() noexcept {
     // don't pulse READY, instead just pull it low, the interrupt latency on the 4809 is horrible
     // so we just pull Ready high as soon as we get the next phase in.
     //DigitalPin<i960Pinout::Ready>::pulse();
+    Serial.println("\tAsserting Ready!");
     DigitalPin<i960Pinout::Ready>::assertPin();
     // make sure that we just wait for the gating signal before continuing
     while (DigitalPin<i960Pinout::InTransaction>::isAsserted() && DigitalPin<i960Pinout::BurstNext>::isDeasserted());
     bool outcome = DigitalPin<i960Pinout::InTransaction>::isDeasserted();
     DigitalPin<i960Pinout::Ready>::deassertPin();
+    Serial.println("\tDeasserting Ready!");
     return outcome;
 }
 constexpr auto IncrementAddress = true;
@@ -470,6 +472,7 @@ void waitForBootSignal() noexcept {
                     FALLING);
 }
 // the setup routine runs once when you press reset:
+constexpr auto TestReadyPinSignal = false;
 void setup() {
     // by resetting the 4809 we are resetting the entire system
     DigitalPin<i960Pinout::Reset4809>::configure();
@@ -552,6 +555,17 @@ void setup() {
     DigitalPin<i960Pinout::Ready>::deassertPin();
     DigitalPin<i960Pinout::GPIOSelect>::deassertPin();
     DigitalPin<i960Pinout::MUXSel0>::deassertPin();
+    if constexpr (TestReadyPinSignal) {
+        Serial.println("TEST READY SIGNAL PIN MODE");
+        while (true) {
+            Serial.println("ASSERT READY!");
+            DigitalPin<i960Pinout::Ready>::assertPin();
+            delay(1000);
+            Serial.println("DEASSERT READY!");
+            DigitalPin<i960Pinout::Ready>::deassertPin();
+            delay(1000);
+        }
+    }
     // setup the pins that could be attached to an io expander separately
     theCache.begin();
     // purge the cache pages
