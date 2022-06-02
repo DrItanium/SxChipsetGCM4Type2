@@ -68,6 +68,8 @@ ProcessorInterface::setDataBits(uint16_t value) noexcept {
     auto contents = (static_cast<uint32_t>(data.bytes[0]) | (static_cast<uint32_t>(data.bytes[1]) << 10)) & normalMask;
     auto portContents = DigitalPin<i960Pinout::Data0>::readOutPort() & invertMask;
     auto output = contents | portContents;
+    Serial.print("Data Bits: 0x");
+    Serial.println(value, HEX);
     DigitalPin<i960Pinout::Data0>::writeOutPort(output);
     //delayMicroseconds(10);
 };
