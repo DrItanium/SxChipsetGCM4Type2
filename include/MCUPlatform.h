@@ -170,7 +170,9 @@ static_assert(!is_same_v<ClosestBitValue_t<10>, ClosestBitValue_t<4>>);
 
 
 enum class TargetMCU {
-    GrandCentralM4_Type3,
+    GrandCentralM4_Type300,
+    GrandCentralM4_Type301,
+    GrandCentralM4_Type302,
     Unknown,
 };
 enum class ConfigurationOptions : byte {
@@ -257,7 +259,36 @@ constexpr MCUConfiguration BoardDescription = {
 };
 
 template<>
-constexpr MCUConfiguration BoardDescription<TargetMCU::GrandCentralM4_Type3> = {
+constexpr MCUConfiguration BoardDescription<TargetMCU::GrandCentralM4_Type300> = {
+        256_KB,
+        8_MHz, // although 10_MHz is the max, the clock rate of 120MHz makes the clock rate actually 12MHz, I know 8mhz works
+        6,
+        128_KB,
+        makeConfigFlags<ConfigurationFlags::UsePortReads,
+                //ConfigurationFlags::CompileInAddressDebuggingSupport,
+                //ConfigurationFlags::AddressDebuggingSupportEnabledOnStartup,
+                ConfigurationFlags::UseIOExpanderAddressLineInterrupts,
+                ConfigurationFlags::SeparateReadAndWriteFunctionPointers,
+                ConfigurationFlags::ValidateTransferDuringInstall,
+                ConfigurationFlags::CaptureAddressWithParallelLines>()
+};
+template<>
+constexpr MCUConfiguration BoardDescription<TargetMCU::GrandCentralM4_Type301> = {
+        256_KB,
+        8_MHz, // although 10_MHz is the max, the clock rate of 120MHz makes the clock rate actually 12MHz, I know 8mhz works
+        6,
+        128_KB,
+        makeConfigFlags<ConfigurationFlags::UsePortReads,
+                //ConfigurationFlags::CompileInAddressDebuggingSupport,
+                //ConfigurationFlags::AddressDebuggingSupportEnabledOnStartup,
+                ConfigurationFlags::UseIOExpanderAddressLineInterrupts,
+                ConfigurationFlags::SeparateReadAndWriteFunctionPointers,
+                ConfigurationFlags::ValidateTransferDuringInstall,
+                ConfigurationFlags::CaptureAddressWithParallelLines>()
+};
+
+template<>
+constexpr MCUConfiguration BoardDescription<TargetMCU::GrandCentralM4_Type302> = {
         256_KB,
         8_MHz, // although 10_MHz is the max, the clock rate of 120MHz makes the clock rate actually 12MHz, I know 8mhz works
         6,
@@ -275,8 +306,12 @@ class TargetBoard {
 public:
     [[nodiscard]] static constexpr auto getCPUFrequency() noexcept { return F_CPU; }
     [[nodiscard]] static constexpr TargetMCU getMCUTarget() noexcept {
-#if defined(CHIPSET_TYPE3)
-        return TargetMCU::GrandCentralM4_Type3;
+#if defined(CHIPSET_TYPE300)
+        return TargetMCU::GrandCentralM4_Type300;
+#elif defined(CHIPSET_TYPE301)
+        return TargetMCU::GrandCentralM4_Type301;
+#elif defined(CHIPSET_TYPE302)
+        return TargetMCU::GrandCentralM4_Type302;
 #else
         return TargetMCU::Unknown;
 #endif
@@ -287,8 +322,8 @@ public:
     [[nodiscard]] static constexpr auto targetMCUIsOneOfThese() noexcept {
         return (targetMCUIs<rest>() || ...);
     }
-    [[nodiscard]] static constexpr auto onType3() noexcept { return targetMCUIs<TargetMCU::GrandCentralM4_Type3>(); }
-    [[nodiscard]] static constexpr auto onSAMD51() noexcept { return targetMCUIsOneOfThese<TargetMCU::GrandCentralM4_Type3>(); }
+    [[nodiscard]] static constexpr auto onType3() noexcept { return targetMCUIsOneOfThese<TargetMCU::GrandCentralM4_Type300, TargetMCU::GrandCentralM4_Type301, TargetMCU::GrandCentralM4_Type302>(); }
+    [[nodiscard]] static constexpr auto onSAMD51() noexcept { return onType3(); }
     [[nodiscard]] static constexpr auto onGrandCentralM4() noexcept { return onType3(); }
     [[nodiscard]] static constexpr auto onUnknownTarget() noexcept { return targetMCUIs<TargetMCU::Unknown>(); }
     [[nodiscard]] static constexpr auto getSRAMAmountInBytes() noexcept { return BoardDescription<getMCUTarget()>.getSramAmount(); }
