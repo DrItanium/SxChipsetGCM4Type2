@@ -48,6 +48,13 @@ using uint24_t = uint32_t;
 #define _BV(bit) (1 << (bit))
 #endif
 
+#if defined(CHIPSET_TYPE300) || defined(CHIPSET_TYPE301) || defined(CHIPSET_TYPE302)
+#ifndef CHIPSET_TYPE3
+#define CHIPSET_TYPE3
+#endif
+#endif
+
+
 template<typename E>
 constexpr bool isValidPin(E pin) noexcept {
     return static_cast<int>(pin) < static_cast<int>(E::Count) &&
@@ -323,6 +330,9 @@ public:
         return (targetMCUIs<rest>() || ...);
     }
     [[nodiscard]] static constexpr auto onType3() noexcept { return targetMCUIsOneOfThese<TargetMCU::GrandCentralM4_Type300, TargetMCU::GrandCentralM4_Type301, TargetMCU::GrandCentralM4_Type302>(); }
+    [[nodiscard]] static constexpr auto onType300() noexcept { return targetMCUIs<TargetMCU::GrandCentralM4_Type300>(); }
+    [[nodiscard]] static constexpr auto onType301() noexcept { return targetMCUIs<TargetMCU::GrandCentralM4_Type301>(); }
+    [[nodiscard]] static constexpr auto onType302() noexcept { return targetMCUIs<TargetMCU::GrandCentralM4_Type302>(); }
     [[nodiscard]] static constexpr auto onSAMD51() noexcept { return onType3(); }
     [[nodiscard]] static constexpr auto onGrandCentralM4() noexcept { return onType3(); }
     [[nodiscard]] static constexpr auto onUnknownTarget() noexcept { return targetMCUIs<TargetMCU::Unknown>(); }
