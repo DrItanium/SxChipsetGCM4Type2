@@ -65,3 +65,16 @@ i960_D12 = PORT_PC12,
 i960_D13 = PORT_PC13,
 i960_D14 = PORT_PC14,
 i960_D15 = PORT_PC15,
+
+// various control signals
+// serial connections to the feathers + interrupts
+Feather0_RX = PORT_B12,
+Feather0_TX = PORT_B13,
+Feather1_RX = PORT_PC22,
+Feather1_TX = PORT_PC23,
+Feather1_INT = PORT_B00,
+Feather0_INT = PORT_B01,
+
+// Serial connection to the Programmable Interrupt Controller
+PIC_RX = PORT_B16,
+PIC_TX = PORT_B17,
