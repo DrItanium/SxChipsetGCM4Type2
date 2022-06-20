@@ -78,3 +78,18 @@ Feather0_INT = PORT_B01,
 // Serial connection to the Programmable Interrupt Controller
 PIC_RX = PORT_B16,
 PIC_TX = PORT_B17,
+
+// management engine control signals
+InTransaction = PORT_B23,
+DoCycle = PORT_B22,
+BurstNext = PORT_B02,
+SuccessfulBoot = PORT_B18,
+
+// extra i960 signals
+i960_HOLD = PORT_D20,
+i960_HLDA = PORT_D21,
+i960_INT = PORT_C21,
+i960_RESET = PORT_C20,
+i960_READY = PORT_C18,
+
+ChipsetBooted = PORT_C19,
