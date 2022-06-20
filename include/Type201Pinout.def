@@ -24,6 +24,10 @@ UnoBreakout_D12 = PORT_D11,
 UnoBreakout_D13 = PORT_D09,
 
 // i960 Input Mux Breakout
+Mux_A0 = PORT_PA12,
+Mux_A1 = PORT_PA13,
+Mux_A2 = PORT_PA14,
+Mux_EN = PORT_PA15,
 Mux_BitB0 = PORT_PA16,
 Mux_BitB1 = PORT_PA17,
 Mux_BitB2 = PORT_PA18,
@@ -40,3 +44,24 @@ i960_A4 = Mux_BitB4, i960_A12 = Mux_BitB4, i960_A20 = Mux_BitB4, i960_A28 = Mux_
 i960_A5 = Mux_BitB5, i960_A13 = Mux_BitB5, i960_A21 = Mux_BitB5, i960_A29 = Mux_BitB5, i960_ByteEnable1 = Mux_BitB5,
 i960_A6 = Mux_BitB6, i960_A14 = Mux_BitB6, i960_A22 = Mux_BitB6, i960_A30 = Mux_BitB6,
 i960_A7 = Mux_BitB7, i960_A15 = Mux_BitB7, i960_A23 = Mux_BitB7, i960_A31 = Mux_BitB7,
+
+// Data lines
+i960_D0 = PORT_PC00,
+i960_D1 = PORT_PC01,
+i960_D2 = PORT_PC02,
+i960_D3 = PORT_PC03,
+i960_D4 = PORT_PC04,
+i960_D5 = PORT_PC05,
+i960_D6 = PORT_PC06,
+i960_D7 = PORT_PC07,
+// D8 and D9 come at the end because PC08 and PC09 are not exposed for me to use
+// instead, we read the full port in and move D8 and D9 into place after the fact then truncate to 16-bits when reading
+// writing is pretty easy. We just move D8 and D9 out to PC16 and PC17 and then set the port up
+i960_D8 = PORT_PC16,
+i960_D9 = PORT_PC17,
+i960_D10 = PORT_PC10,
+i960_D11 = PORT_PC11,
+i960_D12 = PORT_PC12,
+i960_D13 = PORT_PC13,
+i960_D14 = PORT_PC14,
+i960_D15 = PORT_PC15,
