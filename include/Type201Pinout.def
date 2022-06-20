@@ -23,6 +23,8 @@ UnoBreakout_D11 = PORT_D08,
 UnoBreakout_D12 = PORT_D11,
 UnoBreakout_D13 = PORT_D09,
 
+GPIOSelect = UnoBreakout_D10,
+
 // i960 Input Mux Breakout
 Mux_A0 = PORT_PA12,
 Mux_A1 = PORT_PA13,
@@ -91,5 +93,9 @@ i960_HLDA = PORT_D21,
 i960_INT = PORT_C21,
 i960_RESET = PORT_C20,
 i960_READY = PORT_C18,
+Ready = i960_READY,
 
 ChipsetBooted = PORT_C19,
+WaitBoot960 = ChipsetBooted,
+
+SD_EN = SDCARD_CS,

@@ -40,6 +40,8 @@ enum class LoadStoreStyle : uint8_t {
 enum class i960Pinout : int {
 #ifdef CHIPSET_TYPE3
 #include "Type3Pinout.def"
+#elif defined(CHIPSET_TYPE201)
+#include "Type201Pinout.def"
 #else
 #error "Target Chipset Hardware has no pinout defined"
 #endif
@@ -196,6 +198,7 @@ struct DigitalPinConfiguration<pin> { \
 }
 
 #define DefSPICSPin2(pin) DefOutputPin2(pin, LOW, HIGH)
+
 
 DefSPICSPin2(i960Pinout::GPIOSelect);
 DefSPICSPin2(i960Pinout::SD_EN);

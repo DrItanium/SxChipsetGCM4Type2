@@ -180,6 +180,7 @@ enum class TargetMCU {
     GrandCentralM4_Type300,
     GrandCentralM4_Type301,
     GrandCentralM4_Type302,
+    GrandCentralM4_Type201,
     Unknown,
 };
 enum class ConfigurationOptions : byte {
@@ -309,6 +310,21 @@ constexpr MCUConfiguration BoardDescription<TargetMCU::GrandCentralM4_Type302> =
                 ConfigurationFlags::CaptureAddressWithParallelLines>()
 };
 
+template<>
+constexpr MCUConfiguration BoardDescription<TargetMCU::GrandCentralM4_Type201> = {
+        256_KB,
+        8_MHz, // although 10_MHz is the max, the clock rate of 120MHz makes the clock rate actually 12MHz, I know 8mhz works
+        6,
+        128_KB,
+        makeConfigFlags<ConfigurationFlags::UsePortReads,
+                //ConfigurationFlags::CompileInAddressDebuggingSupport,
+                //ConfigurationFlags::AddressDebuggingSupportEnabledOnStartup,
+                //ConfigurationFlags::UseIOExpanderAddressLineInterrupts,
+                ConfigurationFlags::SeparateReadAndWriteFunctionPointers,
+                ConfigurationFlags::ValidateTransferDuringInstall,
+                ConfigurationFlags::CaptureAddressWithParallelLines>()
+};
+
 class TargetBoard {
 public:
     [[nodiscard]] static constexpr auto getCPUFrequency() noexcept { return F_CPU; }
@@ -319,6 +335,8 @@ public:
         return TargetMCU::GrandCentralM4_Type301;
 #elif defined(CHIPSET_TYPE302)
         return TargetMCU::GrandCentralM4_Type302;
+#elif defined(CHIPSET_TYPE201)
+        return TargetMCU::GrandCentralM4_Type201;
 #else
         return TargetMCU::Unknown;
 #endif
