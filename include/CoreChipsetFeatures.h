@@ -59,7 +59,7 @@ public:
         }
     }
 private:
-    static uint16_t readFromFirstPage(uint8_t offset, LoadStoreStyle lss) noexcept {
+    static uint16_t readFromFirstPage(uint8_t offset) noexcept {
         switch (offset) {
             case 0: return static_cast<uint16_t>(activeConfigurationPages_);
             case 2: return static_cast<uint16_t>(activeConfigurationPages_ >> 16);
@@ -80,7 +80,12 @@ public:
     [[nodiscard]] static uint16_t read(uint8_t targetPage, uint8_t offset, LoadStoreStyle lss) noexcept {
         switch (targetPage) {
             case 0:
-                return readFromFirstPage(offset, lss);
+                return readFromFirstPage(offset);
+            case 1: case 2: case 3: case 4: case 5: case 6: case 7: case 8:
+            case 9: case 10: case 11: case 12: case 13: case 14: case 15: case 16:
+            case 17: case 18: case 19: case 20: case 21: case 22: case 23: case 24:
+            case 25: case 26: case 27: case 28: case 29: case 30: case 31: case 32:
+                return entries_[targetPage - 1][(offset & 0b11111'000) >> 3].read(offset & 0b111);
             default:
                 return 0;
         }
@@ -94,6 +99,16 @@ private:
         void clear() noexcept {
             flags_ = 0;
             baseAddress_ = 0;
+        }
+        [[nodiscard]] uint16_t read(uint8_t offset) const noexcept {
+            switch (offset & 0b00000'111) {
+                case 0: return baseAddress_ ;
+                case 2: return static_cast<uint16_t>(baseAddress_ >> 16) ;
+                case 4: return flags_;
+                case 6: return static_cast<uint16_t>(flags_ >> 16);
+                default:
+                    return 0;
+            }
         }
     };
     /**
