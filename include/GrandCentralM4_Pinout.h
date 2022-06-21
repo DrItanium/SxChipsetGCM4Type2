@@ -25,7 +25,6 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #ifndef SXCHIPSET_GRAND_CENTRAL_M4_PINOUT_H
 #define SXCHIPSET_GRAND_CENTRAL_M4_PINOUT_H
-#if defined(CHIPSET_TYPE3)
 #include "Pinout.h"
 
 class InterruptDisabler final {
@@ -83,5 +82,4 @@ inline void digitalWrite(decltype(HIGH) value) noexcept {
         getPortGroup<pin>().OUTSET.reg = bitMasks[getPinDescription<pin>().ulPin];
     }
 }
-#endif
 #endif //SXCHIPSET_GRAND_CENTRAL_M4_PINOUT_H

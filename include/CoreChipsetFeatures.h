@@ -30,50 +30,10 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #define I960SXCHIPSET_CORECHIPSETFEATURES_H
 #include "ProcessorSerializer.h"
 #include "SDCardInterface.h"
-#include "DisplayInterface.h"
 #include "Serial0Interface.h"
-template<typename TheConsoleInterface,
-         typename TheSDInterface,
-         typename TheDisplayInterface,
-         typename TheRTCInterface>
-class CoreChipsetFeatures /* : public IOSpaceThing */ {
+class CoreChipsetFeatures {
 public:
-    static constexpr Address IOBaseAddress = 0xFE00'0000;
-    static constexpr SplitWord32 IOBaseSplit { IOBaseAddress };
-    static constexpr byte SectionID = IOBaseSplit.getMostSignificantByte();
-    // each one of these 256 byte pages have a prescribed start and end
-    static constexpr Address IOConfigurationSpaceStart = IOBaseAddress;
-    static constexpr Address IOConfigurationSpaceEnd = IOConfigurationSpaceStart + (16 * 0x100);
-    enum class IOConfigurationSpace0Registers : uint8_t {
-#define TwoByteEntry(Prefix) Prefix ## 0, Prefix ## 1
-#define FourByteEntry(Prefix) \
-        TwoByteEntry(Prefix ## 0), \
-        TwoByteEntry(Prefix ## 1)
-
-        FourByteEntry(Serial0BaseAddress),
-        FourByteEntry(SDCardInterfaceBaseAddress),
-        FourByteEntry(SDCardFileBlock0BaseAddress),
-        FourByteEntry(DisplayShieldBaseAddress),
-        FourByteEntry(ST7735DisplayBaseAddress),
-        FourByteEntry(RTCBaseAddress),
-#undef FourByteEntry
-#undef TwoByteEntry
-        End,
-        Serial0BaseAddressLower = Serial0BaseAddress00,
-        Serial0BaseAddressUpper = Serial0BaseAddress10,
-        SDCardInterfaceBaseAddressLower = SDCardInterfaceBaseAddress00,
-        SDCardInterfaceBaseAddressUpper = SDCardInterfaceBaseAddress10,
-        SDCardFileBlock0BaseAddressLower = SDCardFileBlock0BaseAddress00,
-        SDCardFileBlock0BaseAddressUpper = SDCardFileBlock0BaseAddress10,
-        DisplayShieldBaseAddressLower = DisplayShieldBaseAddress00,
-        DisplayShieldBaseAddressUpper = DisplayShieldBaseAddress10,
-        ST7735DisplayBaseAddressLower = ST7735DisplayBaseAddress00,
-        ST7735DisplayBaseAddressUpper = ST7735DisplayBaseAddress10,
-        RTCBaseAddressLower = RTCBaseAddress00,
-        RTCBaseAddressUpper = RTCBaseAddress10,
-    };
-
-
+    static constexpr Address IOBaseAddress = 0xFFFF'0000;
 public:
     CoreChipsetFeatures() = delete;
     ~CoreChipsetFeatures() = delete;
@@ -81,42 +41,72 @@ public:
     CoreChipsetFeatures(CoreChipsetFeatures&&) = delete;
     CoreChipsetFeatures& operator=(const CoreChipsetFeatures&) = delete;
     CoreChipsetFeatures& operator=(CoreChipsetFeatures&&) = delete;
-    static void begin() noexcept {
-        // console always comes first
-        TheConsoleInterface::begin();
-        TheDisplayInterface::begin();
-        TheSDInterface::begin();
-        TheRTCInterface::begin();
+    static void setAddress(uint8_t page, uint8_t offset, uint32_t address, uint32_t flags) {
+        auto targetPage = page & 0b11111;
+        auto targetOffset = offset & 0b11111;
+        activeConfigurationPages_ |= (1 << targetPage);
+        enabledDevices_[targetPage] |= (1 << targetOffset);
+        entries_[targetPage][targetOffset] = ConfigurationEntry{address, flags};
+    }
+    static void begin() {
+        // clear out the table to start
+        activeConfigurationPages_ = 0;
+        for (int i = 0;i < 32; ++i) {
+            enabledDevices_[i] = 0;
+            for (int j = 0; j < 32; ++j) {
+                entries_[i][j].clear();
+            }
+        }
     }
 private:
-    static uint16_t readIOConfigurationSpace0(uint8_t offset, LoadStoreStyle) noexcept {
-        switch (static_cast<IOConfigurationSpace0Registers>(offset)) {
-#define X(title, var) \
-             case IOConfigurationSpace0Registers:: title ## Lower : return static_cast<uint16_t>(var); \
-             case IOConfigurationSpace0Registers:: title ## Upper : return static_cast<uint16_t>(var >> 16)
-            X(Serial0BaseAddress, TheConsoleInterface::StartAddress);
-            X(SDCardInterfaceBaseAddress, TheSDInterface::ControlBaseAddress);
-            X(SDCardFileBlock0BaseAddress, TheSDInterface::FilesBaseAddress);
-            X(DisplayShieldBaseAddress, TheDisplayInterface::SeesawSectionStart);
-            X(ST7735DisplayBaseAddress, TheDisplayInterface::DisplaySectionStart);
-            X(RTCBaseAddress, TheRTCInterface::StartAddress);
+    static uint16_t readFromFirstPage(uint8_t offset, LoadStoreStyle lss) noexcept {
+        switch (offset) {
+            case 0: return static_cast<uint16_t>(activeConfigurationPages_);
+            case 2: return static_cast<uint16_t>(activeConfigurationPages_ >> 16);
+#define X(ind) case ind: return static_cast<uint16_t>(enabledDevices_[ind - 4]); \
+              case ind + 2 : return static_cast<uint16_t>(enabledDevices_[ind - 4] >> 16)
+            X(4); X(8); X(12); X(16); X(20); X(24); X(28); X(32);
+            X(36); X(40); X(44); X(48); X(52); X(56); X(60); X(64);
+            X(68); X(72); X(76); X(80); X(84); X(88); X(92); X(96);
+            X(100); X(104); X(108); X(112); X(116); X(120); X(124); X(128);
 #undef X
+            default:
+                return 0;
 
-            default: return 0; // zero is never an io page!
+
         }
     }
-
 public:
     [[nodiscard]] static uint16_t read(uint8_t targetPage, uint8_t offset, LoadStoreStyle lss) noexcept {
-        // force override the default implementation
-        if (targetPage == 0) {
-            return readIOConfigurationSpace0(offset, lss);
-        } else {
-            return 0;
+        switch (targetPage) {
+            case 0:
+                return readFromFirstPage(offset, lss);
+            default:
+                return 0;
         }
     }
-    static void write(uint8_t targetPage, uint8_t offset, LoadStoreStyle lss, SplitWord16 value) noexcept {
-        // do nothing
-    }
+    static void write(uint8_t, uint8_t, LoadStoreStyle, SplitWord16) noexcept { }
+private:
+    struct ConfigurationEntry {
+        uint32_t baseAddress_ = 0;
+        uint32_t flags_ = 0;
+        explicit ConfigurationEntry(uint32_t baseAddress, uint32_t flags = 0) noexcept : baseAddress_(baseAddress), flags_(flags) {}
+        void clear() noexcept {
+            flags_ = 0;
+            baseAddress_ = 0;
+        }
+    };
+    /**
+     * @brief Describes which of the 32 pages contain active entries, a 1 means there are available entries in there
+     */
+    static inline uint32_t activeConfigurationPages_;
+    /**
+     * @brief A series of 32-bit values which describe which entries in a given table are available for querying. A 1 means that the given item is available
+     */
+    static inline uint32_t enabledDevices_[32];
+    /**
+     * @brief The 32 pages with 32 entries each
+     */
+    static ConfigurationEntry entries_[32][32];
 };
 #endif //I960SXCHIPSET_CORECHIPSETFEATURES_H

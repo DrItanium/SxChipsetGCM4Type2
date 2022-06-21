@@ -39,7 +39,6 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "SinglePoolCache.h"
 
 #include "ProcessorSerializer.h"
-#include "DisplayInterface.h"
 #include "CoreChipsetFeatures.h"
 #include "SDCardAsRam.h"
 #include "TaggedCacheAddress.h"
