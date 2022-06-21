@@ -508,11 +508,6 @@ void setup() {
             i960Pinout::W_R_,
             i960Pinout::SuccessfulBoot,
             i960Pinout::INT_EN0,
-#ifndef CHIPSET_TYPE201
-            i960Pinout::INT_EN1,
-            i960Pinout::INT_EN2,
-            i960Pinout::INT_EN3,
-#endif
             i960Pinout::InTransaction,
             i960Pinout::DoCycle,
             i960Pinout::BurstNext,
@@ -540,20 +535,9 @@ void setup() {
             i960Pinout::MUXADR5,
             i960Pinout::MUXADR6,
             i960Pinout::MUXADR7,
-#ifdef CHIPSET_TYPE201
             i960Pinout::MUXSel1,
             i960Pinout::MUXSel2,
             i960Pinout::MUX_EN,
-#else
-            i960Pinout::MUXADR8,
-            i960Pinout::MUXADR9,
-            i960Pinout::MUXADR10,
-            i960Pinout::MUXADR11,
-            i960Pinout::MUXADR12,
-            i960Pinout::MUXADR13,
-            i960Pinout::MUXADR14,
-            i960Pinout::MUXADR15,
-#endif
             i960Pinout::MUXSel0
             >();
     // all of these pins need to be pulled high
