@@ -40,3 +40,6 @@ stay in sync without using the same clock source. The state machine modelled in 
 to tell the chipset when it can proceed.
 
 This state machine is found in the aux directory. This project will continue to be worked on as time goes on. It is not working right now
+
+This is a fork of the older gcm4 based targets because I need to make extensive
+changes to how this all works

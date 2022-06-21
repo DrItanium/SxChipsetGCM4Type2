@@ -61,7 +61,7 @@ inline auto digitalRead(i960Pinout ip) {
 }
 template<i960Pinout pin>
 constexpr auto isValidPin960_v = static_cast<int>(pin) < static_cast<int>(i960Pinout::Count);
-#include "GrandCentralM4_Pinout.h"
+//#include "GrandCentralM4_Pinout.h"
 template<i960Pinout pin>
 [[gnu::always_inline]] inline void digitalWrite(bool level) noexcept {
     digitalWrite<pin>(level ? HIGH : LOW);
