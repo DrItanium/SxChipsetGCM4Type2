@@ -210,9 +210,11 @@ DefInputPin2(i960Pinout::W_R_, LOW, HIGH);
 DefInputPin2(i960Pinout::BE0, LOW, HIGH);
 DefInputPin2(i960Pinout::BE1, LOW, HIGH);
 DefInputPin2(i960Pinout::INT_EN0, LOW, HIGH);
+#ifndef CHIPSET_TYPE201
 DefInputPin2(i960Pinout::INT_EN1, LOW, HIGH);
 DefInputPin2(i960Pinout::INT_EN2, LOW, HIGH);
 DefInputPin2(i960Pinout::INT_EN3, LOW, HIGH);
+#endif
 DefInputPin2(i960Pinout::DoCycle, LOW, HIGH);
 DefInputPin2(i960Pinout::BurstNext, HIGH, LOW); // BLAST Pin emulation
 DefInputPin2(i960Pinout::InTransaction, LOW, HIGH);
@@ -232,6 +234,7 @@ DefBidirectionalPin2(i960Pinout::Data12, LOW, HIGH);
 DefBidirectionalPin2(i960Pinout::Data13, LOW, HIGH);
 DefBidirectionalPin2(i960Pinout::Data14, LOW, HIGH);
 DefBidirectionalPin2(i960Pinout::Data15, LOW, HIGH);
+#ifndef CHIPSET_TYPE201
 DefInputPin2(i960Pinout::MUXADR0, LOW, HIGH);
 DefInputPin2(i960Pinout::MUXADR1, LOW, HIGH);
 DefInputPin2(i960Pinout::MUXADR2, LOW, HIGH);
@@ -249,6 +252,7 @@ DefInputPin2(i960Pinout::MUXADR13, LOW, HIGH);
 DefInputPin2(i960Pinout::MUXADR14, LOW, HIGH);
 DefInputPin2(i960Pinout::MUXADR15, LOW, HIGH);
 DefOutputPin2(i960Pinout::MUXSel0, LOW, HIGH);
+#endif
 #undef DefOutputPin2
 #undef DefInputPin2
 #undef DefInputPullupPin2

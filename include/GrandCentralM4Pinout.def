@@ -106,6 +106,7 @@ PORT_A11,
 PORT_B31, // SD Detect
 PORT_B30, // SWO Debug header
 Count,
+AliasDeviceBase = Count + 1,
 // builtin devices
 Led = LED_BUILTIN,
 Neopixel = PIN_NEOPIXEL,
