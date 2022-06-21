@@ -45,10 +45,10 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "RTCInterface.h"
 #include "i960SxChipset.h"
 #include "type_traits.h"
+#include "MMIOSpace.h"
 
 constexpr auto RTCBaseAddress = 0xFA00'0000;
 constexpr auto Serial0BaseAddress = 0xFB00'0000;
-constexpr auto DisplayBaseAddress = 0xFC00'0000;
 constexpr auto SDBaseAddress = 0xFD00'0000;
 constexpr auto MaximumNumberOfOpenFiles = 256;
 constexpr auto CompileInAddressDebuggingSupport = TargetBoard::compileInAddressDebuggingSupport();
@@ -60,14 +60,11 @@ constexpr auto ValidateTransferDuringInstall = TargetBoard::validateTransferDuri
  * @brief When set to true, the interrupt lines the mcp23s17 provides are used to determine which bytes to read
  */
 constexpr auto UseIOExpanderAddressLineInterrupts = TargetBoard::useIOExpanderAddressLineInterrupts();
-using TheDisplayInterface = DisplayInterface<DisplayBaseAddress>;
+//using TheDisplayInterface = DisplayInterface<DisplayBaseAddress>;
 using TheSDInterface = SDCardInterface<MaximumNumberOfOpenFiles, SDBaseAddress>;
 using TheConsoleInterface = Serial0Interface<Serial0BaseAddress, CompileInAddressDebuggingSupport, AddressDebuggingEnabledOnStartup>;
 using TheRTCInterface = RTCInterface<RTCBaseAddress>;
-using ConfigurationSpace = CoreChipsetFeatures<TheConsoleInterface,
-        TheSDInterface,
-        TheDisplayInterface,
-        TheRTCInterface>;
+using ConfigurationSpace = CoreChipsetFeatures;
 // define the backing memory storage classes via template specialization
 // at this point in time, if no specialization is performed, use SDCard as ram backend
 using FallbackMemory = SDCardAsRam<TheSDInterface >;
