@@ -29,6 +29,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "Pinout.h"
 #include <vector>
 #include <memory>
+#include <experimental/memory>
 /**
  * @brief Abstract representation of a memory space that can be accessed in a generic fashion; It has a base address (256-byte aligned) and consumes 1 or more pages!
  */
@@ -36,6 +37,7 @@ class MemorySpace {
 public:
     using Self = MemorySpace;
     using Ptr = std::shared_ptr<Self>;
+    using ObserverPtr = std::experimental::observer_ptr<Self>;
     static constexpr uint32_t fixBaseAddress(uint32_t value) noexcept { return value & 0xFFFFFF00; }
     static constexpr uint32_t correctPageCount(uint32_t value) noexcept { return value < 1 ? 1 : value; }
 public:
@@ -133,7 +135,7 @@ public:
         }
     }
 protected:
-    MemorySpace::Ptr
+    MemorySpace::ObserverPtr
     find(uint32_t address) const noexcept {
         for (const auto& subSpace : subSpaces_) {
             if (subSpace->respondsTo(address)) {
@@ -166,17 +168,10 @@ public:
     }
     bool empty() const noexcept { return subSpaces_.empty(); }
     auto size() const noexcept { return subSpaces_.size(); }
-    void emplace_back(MemorySpace::Ptr targetPtr) noexcept { subSpaces_.emplace_back(targetPtr); }
+    void emplace_back(MemorySpace::ObserverPtr targetPtr) noexcept { subSpaces_.emplace_back(targetPtr); }
+    template<typename T>
+    void emplace_back(T& targetPtr) noexcept { emplace_back(std::experimental::make_observer(&targetPtr)); }
 
-    template<typename T, typename ... Args>
-    void emplace_back(uint32_t baseAddress, uint32_t numBlocks, Args&&... rest) noexcept {
-        auto target = std::make_shared<T>(baseAddress, numBlocks, rest...);
-        emplace_back(target);
-    }
-    template<typename T, typename ... Args>
-    void emplace_back(Args&&... rest) noexcept {
-        emplace_back(std::make_shared<T>());
-    }
     uint32_t
     write(uint32_t baseAddress, uint8_t* data, uint32_t count) noexcept override {
         // bypass lastMatch to make sure we always do the right thing
@@ -199,8 +194,8 @@ public:
     void handleWriteRequest() noexcept override;
 private:
     // yes mutable is gross but I have an interface to satisfy
-    mutable MemorySpace::Ptr lastMatch_ = nullptr;
-    std::vector<MemorySpace::Ptr> subSpaces_;
+    mutable ObserverPtr lastMatch_ = nullptr;
+    std::vector<ObserverPtr> subSpaces_;
 };
 class CompleteMemorySpace : public ContainerSpace {
 public:

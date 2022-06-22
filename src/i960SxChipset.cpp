@@ -47,7 +47,6 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "type_traits.h"
 #include "ManagementEngine.h"
 #include "RAM.h"
-
 constexpr auto RTCBaseAddress = 0xFA00'0000;
 constexpr auto Serial0BaseAddress = 0xFB00'0000;
 constexpr auto SDBaseAddress = 0xFD00'0000;
@@ -196,8 +195,8 @@ void doInvocationBody() noexcept {
     }
 }
 using SystemRam_t = RAM<BackingMemoryStorage_t>;
-SystemRam_t::Ptr theRAM;
-CoreChipsetFeatures::Ptr configurationSpace;
+SystemRam_t theRAM;
+CoreChipsetFeatures configurationSpace;
 
 void installBootImage() noexcept {
 
@@ -212,9 +211,9 @@ void installBootImage() noexcept {
             // okay we were successful in opening the file, now copy the image into psram
         Address size = theFile.size();
         Serial.println(F("TRANSFERRING BOOT.SYS TO RAM"));
-        auto cacheSize = theRAM->getCacheSize();
+        constexpr auto cacheSize = theRAM.getCacheSize();
         //static constexpr auto CacheSize = ::CacheSize;
-        auto *storage = theRAM->viewCacheAsStorage();
+        auto *storage = theRAM.viewCacheAsStorage();
         if constexpr (ValidateTransferDuringInstall) {
             auto realCacheSize = cacheSize / 2;
             byte* storage0 = storage;
@@ -265,7 +264,7 @@ void installBootImage() noexcept {
         // make sure we close the file before destruction
         theFile.close();
         // clear both caches to be on the safe side
-        theRAM->clear();
+        theRAM.clear();
     }
 }
 
@@ -413,18 +412,17 @@ signalHaltState(const std::string& haltMsg) noexcept {
     signalHaltState(haltMsg.c_str());
 }
 #endif
-CompleteMemorySpace::Ptr fullSpace;
+CompleteMemorySpace fullSpace;
+MemorySpace::ObserverPtr space;
 void
 setupMemoryMap() {
-    fullSpace = std::make_shared<CompleteMemorySpace>();
-    theRAM = std::make_shared<SystemRam_t>();
-    configurationSpace = std::make_shared<CoreChipsetFeatures>();
-    fullSpace->emplace_back(configurationSpace);
-    fullSpace->emplace_back(theRAM);
+    space = std::experimental::make_observer(&fullSpace);
+    fullSpace.emplace_back(configurationSpace);
+    fullSpace.emplace_back(theRAM);
     /// @todo implement
 }
-MemorySpace::Ptr
+MemorySpace::ObserverPtr
 getMemory() noexcept {
-    return fullSpace;
+    return space;
 }
 SdFat SD;
