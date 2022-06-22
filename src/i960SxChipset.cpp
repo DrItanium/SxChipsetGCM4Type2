@@ -284,11 +284,7 @@ void setup() {
     DigitalPin<i960Pinout::Reset4809>::assertPin();
     // Reset960 is waitboot960 in type 3.00 but in 3.01 it is actually used a chipset booted pin instead
     DigitalPin<i960Pinout::Reset960>::configure();
-    if constexpr (TargetBoard::onType300()) {
-        DigitalPin<i960Pinout::Reset960>::assertPin();
-    } else {
-        DigitalPin<i960Pinout::Reset960>::deassertPin();
-    }
+    DigitalPin<i960Pinout::Reset960>::deassertPin();
 
     // always do this first to make sure that we put the i960 into reset regardless of target
     // make sure that the 4809 has enough time and also make sure that the i960 has enough time to undegrade itself!
@@ -373,11 +369,7 @@ void setup() {
     installBootImage();
     delay(100);
     Serial.println(F("i960Sx chipset brought up fully!"));
-    if constexpr (TargetBoard::onType300()) {
-        DigitalPin<i960Pinout::Reset960>::deassertPin();
-    } else {
-        DigitalPin<i960Pinout::Reset960>::assertPin();
-    }
+    DigitalPin<i960Pinout::Reset960>::assertPin();
 
     ProcessorInterface::setupDataLinesForRead();
     waitForBootSignal();
