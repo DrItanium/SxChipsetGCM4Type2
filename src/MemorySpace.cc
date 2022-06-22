@@ -31,12 +31,34 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 void
 MemorySpace::handleReadRequest() noexcept {
-
+    ProcessorInterface::setupDataLinesForRead();
+    do {
+        // wait for
+        ManagementEngine::waitForCycleUnlock();
+        ProcessorInterface::setDataBits(read(ProcessorInterface::getAddress(),
+                                             ProcessorInterface::getStyle()));
+        if (ManagementEngine::informCPU()) {
+            break;
+        }
+        ProcessorInterface::burstNext<true>(); // advance the address
+    } while (true);
 }
 
 void
 MemorySpace::handleWriteRequest() noexcept {
-
+    ProcessorInterface::setupDataLinesForWrite();
+    do {
+        // wait for
+        ManagementEngine::waitForCycleUnlock();
+        // get the data bits but do nothing with it just to delay things
+        write(ProcessorInterface::getAddress(),
+              ProcessorInterface::getDataBits(),
+              ProcessorInterface::getStyle());
+        if (ManagementEngine::informCPU()) {
+            break;
+        }
+        ProcessorInterface::burstNext<true>();
+    } while (true);
 }
 
 void

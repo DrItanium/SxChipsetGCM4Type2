@@ -59,7 +59,8 @@ public:
      * @param value The value to write
      * @param lss The size of the value
      */
-    virtual void write(uint32_t address, uint16_t value, LoadStoreStyle lss) noexcept { }
+    virtual void write(uint32_t address, SplitWord16 value, LoadStoreStyle lss) noexcept { }
+    void write(uint32_t address, uint16_t value, LoadStoreStyle style) noexcept { write(address, SplitWord16(value), style); }
     /**
      * @brief Read a 16-bit value from this space relative to the base address
      * @param address The address that we want to read from relative to this space's base address
