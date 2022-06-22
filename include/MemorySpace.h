@@ -30,14 +30,28 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <vector>
 #include <memory>
 /**
- * @brief Abstract representation of a memory space that can be accessed in a generic fashion
+ * @brief Abstract representation of a memory space that can be accessed in a generic fashion; It has a base address (256-byte aligned) and consumes 1 or more pages!
  */
 class MemorySpace {
 public:
     using Self = MemorySpace;
     using Ptr = std::shared_ptr<Self>;
+    static constexpr uint32_t fixBaseAddress(uint32_t value) noexcept { return value & 0xFFFFFF00; }
+    static constexpr uint32_t correctPageCount(uint32_t value) noexcept { return value < 1 ? 1 : value; }
 public:
-    MemorySpace() = default;
+    /**
+     * @brief Construct a memory space with a start and length (in 256 byte pages)
+     * @param baseAddress The starting address (the lowest 8 bits will be cleared out)
+     * @param numPages The number of 256-byte pages consumed by this memory space (at least 1)
+     */
+    MemorySpace(uint32_t baseAddress, uint32_t numPages) :
+    numberOfPages_(correctPageCount(numPages)),
+    baseAddress_(fixBaseAddress(baseAddress)),
+    endAddress_(baseAddress_ + (numberOfPages_ << 8)),
+    internalMask_(endAddress_ - 1)
+    {
+
+    }
     virtual ~MemorySpace() = default;
     /**
      * @brief Write a given value to memory
@@ -59,19 +73,44 @@ public:
      * @param address The physical address to check for matching
      * @return a boolean value signifying if this memory space responds to the given address or not
      */
-    virtual bool respondsTo(uint32_t address) const noexcept = 0;
+    virtual bool respondsTo(uint32_t address) const noexcept {
+        return address >= baseAddress_ && address < endAddress_;
+    }
+
+    virtual size_t write(uint32_t baseAddress, uint8_t* data, size_t count) noexcept = 0;
+    virtual size_t read(uint32_t baseAddress, uint8_t* data, size_t count) noexcept = 0;
+    [[nodiscard]] constexpr auto getNumberOfPages() const noexcept { return numberOfPages_; }
+    [[nodiscard]] constexpr auto getBaseAddress() const noexcept { return baseAddress_; }
+    [[nodiscard]] constexpr auto getEndAddress() const noexcept { return endAddress_; }
+    [[nodiscard]] constexpr auto getInternalMask() const noexcept { return internalMask_; }
+private:
+    uint32_t numberOfPages_;
+    uint32_t baseAddress_;
+    uint32_t endAddress_;
+    uint32_t internalMask_;
 };
 
 /**
  * @brief A class which holds onto a set of sub memory spaces
  */
 class ContainerSpace : public MemorySpace {
-
 public:
-    using MemorySpace::MemorySpace;
+    using Parent = MemorySpace;
+    using Self = ContainerSpace;
+public:
+    ContainerSpace(uint32_t baseAddress, uint32_t numPages) : Parent(baseAddress, numPages) { }
     ~ContainerSpace() override = default;
-    void write(uint32_t address, uint16_t value, LoadStoreStyle lss) noexcept override {
 
+    void
+    write(uint32_t address, uint16_t value, LoadStoreStyle lss) noexcept override {
+        if (lastMatch_) {
+            lastMatch_->write(address, value, lss);
+        } else {
+            if (auto result = find(address); result) {
+                result->write(address, value, lss) ;
+                lastMatch_ = result;
+            }
+        }
     }
     uint16_t
     read(uint32_t address, LoadStoreStyle lss) const noexcept override {
@@ -80,7 +119,8 @@ public:
         if (lastMatch_) {
             return lastMatch_->read(address, lss);
         } else {
-            if (auto result = find(address); lastMatch_) {
+            if (auto result = find(address); result) {
+                lastMatch_ = result;
                 return lastMatch_->read(address, lss) ;
             } else {
                 return 0;
@@ -101,28 +141,33 @@ private:
 public:
     bool
     respondsTo(uint32_t address) const noexcept override {
-        if (lastMatch_ && lastMatch_->respondsTo(address)) {
-            return true;
-        } else {
-            if (auto subSpace = find(address); subSpace) {
-                lastMatch_ = subSpace;
+        if (Parent::respondsTo(address)) {
+            if (lastMatch_ && lastMatch_->respondsTo(address)) {
                 return true;
             } else {
-                return false;
+                if (auto subSpace = find(address); subSpace) {
+                    lastMatch_ = subSpace;
+                    return true;
+                } else {
+                    return false;
+                }
             }
+        } else {
+            return false;
         }
     }
     bool empty() const noexcept { return subSpaces_.empty(); }
     auto size() const noexcept { return subSpaces_.size(); }
-    /**
-     * @brief Adds the provided memory space shared_ptr to the current list, allows for duplicates!
-     * @param targetPtr The pointer to add
-     */
     void emplace_back(MemorySpace::Ptr targetPtr) noexcept { subSpaces_.emplace_back(targetPtr); }
+
+    template<typename T, typename ... Args>
+    void emplace_back(uint32_t baseAddress, uint32_t numBlocks, Args&&... rest) noexcept {
+        emplace_back(std::make_shared<T>(baseAddress, numBlocks, rest...));
+    }
+
 private:
     // yes mutable is gross but I have an interface to satisfy
     mutable MemorySpace::Ptr lastMatch_ = nullptr;
     std::vector<MemorySpace::Ptr> subSpaces_;
 };
-
 #endif //SXCHIPSETGCM4TYPE2_MEMORYSPACE_H
