@@ -27,10 +27,15 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #define SXCHIPSETGCM4TYPE2_MEMORYSPACE_H
 #include "MCUPlatform.h"
 #include "Pinout.h"
+#include <vector>
+#include <memory>
 /**
  * @brief Abstract representation of a memory space that can be accessed in a generic fashion
  */
 class MemorySpace {
+public:
+    using Self = MemorySpace;
+    using Ptr = std::shared_ptr<Self>;
 public:
     MemorySpace() = default;
     virtual ~MemorySpace() = default;
@@ -55,6 +60,69 @@ public:
      * @return a boolean value signifying if this memory space responds to the given address or not
      */
     virtual bool respondsTo(uint32_t address) const noexcept = 0;
+};
+
+/**
+ * @brief A class which holds onto a set of sub memory spaces
+ */
+class ContainerSpace : public MemorySpace {
+
+public:
+    using MemorySpace::MemorySpace;
+    ~ContainerSpace() override = default;
+    void write(uint32_t address, uint16_t value, LoadStoreStyle lss) noexcept override {
+
+    }
+    uint16_t
+    read(uint32_t address, LoadStoreStyle lss) const noexcept override {
+        // at this point we need to use lastMatch_ as a matching criteria
+        // generally, if we are at this point then we found a successful match!
+        if (lastMatch_) {
+            return lastMatch_->read(address, lss);
+        } else {
+            if (auto result = find(address); lastMatch_) {
+                return lastMatch_->read(address, lss) ;
+            } else {
+                return 0;
+            }
+
+        }
+    }
+private:
+    MemorySpace::Ptr
+    find(uint32_t address) const noexcept {
+        for (const auto& subSpace : subSpaces_) {
+            if (subSpace->respondsTo(address)) {
+                return subSpace;
+            }
+        }
+        return nullptr;
+    }
+public:
+    bool
+    respondsTo(uint32_t address) const noexcept override {
+        if (lastMatch_ && lastMatch_->respondsTo(address)) {
+            return true;
+        } else {
+            if (auto subSpace = find(address); subSpace) {
+                lastMatch_ = subSpace;
+                return true;
+            } else {
+                return false;
+            }
+        }
+    }
+    bool empty() const noexcept { return subSpaces_.empty(); }
+    auto size() const noexcept { return subSpaces_.size(); }
+    /**
+     * @brief Adds the provided memory space shared_ptr to the current list, allows for duplicates!
+     * @param targetPtr The pointer to add
+     */
+    void emplace_back(MemorySpace::Ptr targetPtr) noexcept { subSpaces_.emplace_back(targetPtr); }
+private:
+    // yes mutable is gross but I have an interface to satisfy
+    mutable MemorySpace::Ptr lastMatch_ = nullptr;
+    std::vector<MemorySpace::Ptr> subSpaces_;
 };
 
 #endif //SXCHIPSETGCM4TYPE2_MEMORYSPACE_H
