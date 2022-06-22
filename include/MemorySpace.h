@@ -185,6 +185,8 @@ public:
             return 0;
         }
     }
+    void handleReadRequest() noexcept override;
+    void handleWriteRequest() noexcept override;
 private:
     // yes mutable is gross but I have an interface to satisfy
     mutable MemorySpace::Ptr lastMatch_ = nullptr;
