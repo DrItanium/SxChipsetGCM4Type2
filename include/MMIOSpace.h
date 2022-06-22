@@ -30,7 +30,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #define SXCHIPSETGCM4TYPE2_MMIOSPACE_H
 #include "CoreChipsetFeatures.h"
 #include <memory>
-#include "IOSpace.h"
+#include "MemorySpace.h"
 class MMIOSpace {
 public:
     MMIOSpace() = delete;

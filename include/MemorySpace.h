@@ -23,17 +23,17 @@ ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
-#ifndef SXCHIPSETGCM4TYPE2_IOSPACE_H
-#define SXCHIPSETGCM4TYPE2_IOSPACE_H
+#ifndef SXCHIPSETGCM4TYPE2_MEMORYSPACE_H
+#define SXCHIPSETGCM4TYPE2_MEMORYSPACE_H
 #include "MCUPlatform.h"
 #include "Pinout.h"
 /**
  * @brief Abstract representation of a memory space that can be accessed in a generic fashion
  */
-class IOSpace {
+class MemorySpace {
 public:
-    IOSpace() = default;
-    virtual ~IOSpace() = default;
+    MemorySpace() = default;
+    virtual ~MemorySpace() = default;
     /**
      * @brief Write a given value to memory
      * @param address The address that we want to read from relative to the space's base address
@@ -48,6 +48,13 @@ public:
      * @return The 16-bit value
      */
     [[nodiscard]] virtual uint16_t read(uint32_t address, LoadStoreStyle lss) const noexcept { return 0; }
+
+    /**
+     * @brief Used to determine if this memory space responds to a given memory request
+     * @param address The physical address to check for matching
+     * @return a boolean value signifying if this memory space responds to the given address or not
+     */
+    virtual bool respondsTo(uint32_t address) const noexcept = 0;
 };
 
-#endif //SXCHIPSETGCM4TYPE2_IOSPACE_H
+#endif //SXCHIPSETGCM4TYPE2_MEMORYSPACE_H
