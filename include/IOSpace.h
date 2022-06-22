@@ -34,8 +34,20 @@ class IOSpace {
 public:
     IOSpace() = default;
     virtual ~IOSpace() = default;
-    virtual void write(uint32_t address, uint16_t value, LoadStoreStyle lss) { }
-    virtual uint16_t read(uint32_t address, LoadStoreStyle lss) { return 0; }
+    /**
+     * @brief Write a given value to memory
+     * @param address The address that we want to read from relative to the space's base address
+     * @param value The value to write
+     * @param lss The size of the value
+     */
+    virtual void write(uint32_t address, uint16_t value, LoadStoreStyle lss) noexcept { }
+    /**
+     * @brief Read a 16-bit value from this space relative to the base address
+     * @param address The address that we want to read from relative to this space's base address
+     * @param lss The size of the value to read
+     * @return The 16-bit value
+     */
+    [[nodiscard]] virtual uint16_t read(uint32_t address, LoadStoreStyle lss) const noexcept { return 0; }
 };
 
 #endif //SXCHIPSETGCM4TYPE2_IOSPACE_H
