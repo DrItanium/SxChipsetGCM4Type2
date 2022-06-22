@@ -52,4 +52,27 @@ namespace ManagementEngine
                         []() { signalHaltState("CHECKSUM FAILURE"); },
                         FALLING);
     }
+    void
+    configure() noexcept {
+        // by resetting the 4809 we are resetting the entire system
+        DigitalPin<i960Pinout::Reset4809>::configure();
+        // Reset960 is waitboot960 in type 3.00 but in 3.01 it is actually used a chipset booted pin instead
+        DigitalPin<i960Pinout::Reset960>::configure();
+    }
+    void
+    holdInReset() noexcept {
+        DigitalPin<i960Pinout::Reset4809>::assertPin();
+    }
+    void
+    allowBoot() noexcept {
+        DigitalPin<i960Pinout::Reset4809>::deassertPin();
+    }
+    void
+    chipsetIsInSetup() noexcept {
+        DigitalPin<i960Pinout::Reset960>::deassertPin();
+    }
+    void
+    chipsetReady() noexcept {
+        DigitalPin<i960Pinout::Reset960>::assertPin();
+    }
 }

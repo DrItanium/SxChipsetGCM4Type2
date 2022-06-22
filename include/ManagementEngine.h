@@ -32,5 +32,10 @@ namespace ManagementEngine {
     void waitForCycleUnlock() noexcept;
     [[nodiscard]] bool informCPU() noexcept;
     void waitForBootSignal() noexcept;
+    void configure() noexcept;
+    void holdInReset() noexcept;
+    void allowBoot() noexcept;
+    void chipsetIsInSetup() noexcept;
+    void chipsetReady() noexcept;
 }
 #endif //SXCHIPSETGCM4TYPE2_MANAGEMENTENGINE_H

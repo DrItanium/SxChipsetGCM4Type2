@@ -177,27 +177,25 @@ void installBootImage() noexcept {
 constexpr auto TestReadyPinSignal = false;
 void setupMemoryMap();
 void setup() {
-    // by resetting the 4809 we are resetting the entire system
-    DigitalPin<i960Pinout::Reset4809>::configure();
-    DigitalPin<i960Pinout::Reset4809>::assertPin();
-    // Reset960 is waitboot960 in type 3.00 but in 3.01 it is actually used a chipset booted pin instead
-    DigitalPin<i960Pinout::Reset960>::configure();
-    DigitalPin<i960Pinout::Reset960>::deassertPin();
-
+    ManagementEngine::configure();
+    ManagementEngine::holdInReset();
+    ManagementEngine::chipsetIsInSetup();
     // always do this first to make sure that we put the i960 into reset regardless of target
     // make sure that the 4809 has enough time and also make sure that the i960 has enough time to undegrade itself!
-    delay(1);
-    DigitalPin<i960Pinout::Reset4809>::deassertPin();
-    Serial.begin(115200);
-    while (!Serial) {
-        delay(10);
-    }
+    // setup random
     // seed random on startup to be on the safe side from analog pin A0, A1, A2, and A3
-    randomSeed(analogRead(A0) + analogRead(A1) + analogRead(A2) + analogRead(A3));
     // before we do anything else, configure as many pins as possible and then
     // pull the i960 into a reset state, it will remain this for the entire
     // duration of the setup function
     // get SPI setup ahead of time
+    randomSeed(analogRead(A0) + analogRead(A1) + analogRead(A2) + analogRead(A3));
+    // put in a 1-millisecond delay to be on the safe side
+    delay(1);
+    ManagementEngine::allowBoot();
+    Serial.begin(115200);
+    while (!Serial) {
+        delay(10);
+    }
     SPI.begin();
     Wire.begin();
     configurePins<
@@ -267,8 +265,7 @@ void setup() {
     installBootImage();
     delay(100);
     Serial.println(F("i960Sx chipset brought up fully!"));
-    DigitalPin<i960Pinout::Reset960>::assertPin();
-
+    ManagementEngine::chipsetReady();
     ProcessorInterface::setupDataLinesForRead();
     ManagementEngine::waitForBootSignal();
 }
