@@ -79,6 +79,4 @@ ProcessorInterface::getStyle() noexcept {
 }
 void
 ProcessorInterface::begin() noexcept {
-    updateTargetFunctions<true>();
-    updateTargetFunctions<false>();
 }

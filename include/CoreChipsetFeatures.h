@@ -31,35 +31,26 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "ProcessorSerializer.h"
 #include "SDCardInterface.h"
 #include "Serial0Interface.h"
-class CoreChipsetFeatures {
+#include "MemorySpace.h"
+class CoreChipsetFeatures : public MemorySpace {
 public:
     static constexpr Address IOBaseAddress = 0xFFFF'0000;
+    using Parent = MemorySpace;
 public:
-    CoreChipsetFeatures() = delete;
-    ~CoreChipsetFeatures() = delete;
-    CoreChipsetFeatures(const CoreChipsetFeatures&) = delete;
-    CoreChipsetFeatures(CoreChipsetFeatures&&) = delete;
-    CoreChipsetFeatures& operator=(const CoreChipsetFeatures&) = delete;
-    CoreChipsetFeatures& operator=(CoreChipsetFeatures&&) = delete;
-    static void setAddress(uint8_t page, uint8_t offset, uint32_t address, uint32_t flags) {
+    CoreChipsetFeatures() : Parent(0xFFFF'0000, 33) { }
+    ~CoreChipsetFeatures() override = default;
+    void
+    setAddress(uint8_t page, uint8_t offset, uint32_t address, uint32_t flags) {
         auto targetPage = page & 0b11111;
         auto targetOffset = offset & 0b11111;
         activeConfigurationPages_ |= (1 << targetPage);
         enabledDevices_[targetPage] |= (1 << targetOffset);
         entries_[targetPage][targetOffset] = ConfigurationEntry{address, flags};
     }
-    static void begin() {
-        // clear out the table to start
-        activeConfigurationPages_ = 0;
-        for (int i = 0;i < 32; ++i) {
-            enabledDevices_[i] = 0;
-            for (int j = 0; j < 32; ++j) {
-                entries_[i][j].clear();
-            }
-        }
-    }
+
 private:
-    static uint16_t readFromFirstPage(uint8_t offset) noexcept {
+    uint16_t
+    readFromFirstPage(uint8_t offset) const noexcept {
         switch (offset) {
             case 0: return static_cast<uint16_t>(activeConfigurationPages_);
             case 2: return static_cast<uint16_t>(activeConfigurationPages_ >> 16);
@@ -77,7 +68,13 @@ private:
         }
     }
 public:
-    [[nodiscard]] static uint16_t read(uint8_t targetPage, uint8_t offset, LoadStoreStyle lss) noexcept {
+    [[nodiscard]] uint16_t read(uint32_t address, LoadStoreStyle lss) const noexcept override {
+        auto targetPage = static_cast<uint8_t>((address >> 8) & 0x1F);
+        auto targetOffset = static_cast<uint8_t>(address);
+        return readGeneric(targetPage, targetOffset, lss);
+    }
+private:
+    [[nodiscard]] uint16_t readGeneric(uint8_t targetPage, uint8_t offset, LoadStoreStyle lss) const noexcept {
         switch (targetPage) {
             case 0:
                 return readFromFirstPage(offset);
@@ -90,12 +87,12 @@ public:
                 return 0;
         }
     }
-    static void write(uint8_t, uint8_t, LoadStoreStyle, SplitWord16) noexcept { }
 private:
     struct ConfigurationEntry {
         uint32_t baseAddress_ = 0;
         uint32_t flags_ = 0;
         explicit ConfigurationEntry(uint32_t baseAddress, uint32_t flags = 0) noexcept : baseAddress_(baseAddress), flags_(flags) {}
+        ConfigurationEntry() : ConfigurationEntry(0, 0) { }
         void clear() noexcept {
             flags_ = 0;
             baseAddress_ = 0;
@@ -114,14 +111,14 @@ private:
     /**
      * @brief Describes which of the 32 pages contain active entries, a 1 means there are available entries in there
      */
-    static inline uint32_t activeConfigurationPages_;
+    uint32_t activeConfigurationPages_ = 0;
     /**
      * @brief A series of 32-bit values which describe which entries in a given table are available for querying. A 1 means that the given item is available
      */
-    static inline uint32_t enabledDevices_[32];
+    uint32_t enabledDevices_[32] { 0 };
     /**
      * @brief The 32 pages with 32 entries each
      */
-    static ConfigurationEntry entries_[32][32];
+    ConfigurationEntry entries_[32][32];
 };
 #endif //I960SXCHIPSET_CORECHIPSETFEATURES_H

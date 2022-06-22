@@ -87,18 +87,10 @@ public:
         //Serial.print(F("Address 0x")); Serial.println(address_.getWholeValue(), HEX);
         if (ProcessorInterface::isReadOperation()) {
             setupDataLinesForRead();
-            if constexpr (inDebugMode) {
-                lastReadDebug_();
-            } else {
-                lastRead_();
-            }
+            getMemory()->handleReadRequest();
         } else {
             setupDataLinesForWrite();
-            if constexpr (inDebugMode) {
-                lastWriteDebug_();
-            } else {
-                lastWrite_();
-            }
+            getMemory()->handleWriteRequest();
         }
     }
     template<bool advanceAddress = true>

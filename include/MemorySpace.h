@@ -170,7 +170,8 @@ public:
 
     template<typename T, typename ... Args>
     void emplace_back(uint32_t baseAddress, uint32_t numBlocks, Args&&... rest) noexcept {
-        emplace_back(std::make_shared<T>(baseAddress, numBlocks, rest...));
+        auto target = std::make_shared<T>(baseAddress, numBlocks, rest...);
+        emplace_back(target);
     }
     size_t
     write(uint32_t baseAddress, uint8_t* data, size_t count) noexcept override {
@@ -192,7 +193,6 @@ public:
     }
     void handleReadRequest() noexcept override;
     void handleWriteRequest() noexcept override;
-
 private:
     // yes mutable is gross but I have an interface to satisfy
     mutable MemorySpace::Ptr lastMatch_ = nullptr;

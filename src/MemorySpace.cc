@@ -31,7 +31,6 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 void
 MemorySpace::handleReadRequest() noexcept {
-    ProcessorInterface::setupDataLinesForRead();
     do {
         // wait for
         ManagementEngine::waitForCycleUnlock();
@@ -46,7 +45,6 @@ MemorySpace::handleReadRequest() noexcept {
 
 void
 MemorySpace::handleWriteRequest() noexcept {
-    ProcessorInterface::setupDataLinesForWrite();
     do {
         // wait for
         ManagementEngine::waitForCycleUnlock();

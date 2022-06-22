@@ -487,7 +487,6 @@ void setup() {
     // setup the pins that could be attached to an io expander separately
     theCache.begin();
     // purge the cache pages
-    ConfigurationSpace::begin();
     Serial.println(F("i960Sx chipset bringup"));
     ProcessorInterface::begin();
     BackingMemoryStorage_t::begin();
@@ -534,9 +533,14 @@ signalHaltState(const std::string& haltMsg) noexcept {
     signalHaltState(haltMsg.c_str());
 }
 #endif
-
+std::shared_ptr<CompleteMemorySpace> fullSpace;
 void
 setupMemoryMap() {
-
+    fullSpace = std::make_shared<CompleteMemorySpace>();
+    /// @todo implement
+}
+MemorySpace::Ptr
+getMemory() noexcept {
+    return fullSpace;
 }
 SdFat SD;
