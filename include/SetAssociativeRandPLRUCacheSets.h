@@ -30,353 +30,6 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "TaggedCacheAddress.h"
 #include "CacheEntry.h"
 
-/**
- * @brief Divides a series of 8 cache lines in the set into several subsets where the replacement algorithm uses a combination of random replacement and tree plru
- * @tparam numTagBits The number of bits that make up a tag overall
- * @tparam totalBitCount  The total number of bits that make up an address partially serviced by this cache set
- * @tparam numLowestBits The number of bytes that each cache line will store
- * @tparam T The backing storage type or where we read from and write to on a cache miss
- */
-template<byte numTagBits, byte numLowestBits, typename T, bool debugMode = false>
-class EightWayRandPLRUCacheSet {
-public:
-    static constexpr auto NumberOfWays = 8;
-    static constexpr auto WayMask = NumberOfWays - 1;
-    using CacheEntry = ::CacheEntry<numTagBits, numLowestBits, T, debugMode>;
-    using TaggedAddress = typename CacheEntry::TaggedAddress;
-    static constexpr auto NumBytesCached = CacheEntry::NumBytesCached;
-public:
-    //[[gnu::noinline]]
-    CacheEntry& getLine(const TaggedAddress& theAddress) noexcept {
-        byte targetIndex = 0xFF;
-        for (byte i = 0; i < NumberOfWays; ++i) {
-            if (ways_[i].matches(theAddress)) {
-                updateFlags(i);
-                return ways_[i];
-            } else if ((targetIndex >= NumberOfWays) && !ways_[i].isValid()) {
-                targetIndex = i;
-            }
-        }
-
-        auto index = (targetIndex < NumberOfWays) ? targetIndex : getLeastRecentlyUsed();
-        updateFlags(index);
-        ways_[index].reset(theAddress);
-        return ways_[index];
-    }
-    void clear() noexcept {
-        for (auto& way : ways_) {
-            way.clear();
-        }
-        bits_ = 0;
-    }
-    [[nodiscard]] constexpr size_t size() const noexcept { return NumberOfWays; }
-private:
-    void updateFlags(byte index) noexcept {
-        constexpr byte masks[NumberOfGroups * 2] {
-                0b1110, 0b0001,
-                0b1101, 0b0010,
-                0b1011, 0b0100,
-                0b0111, 0b1000,
-        };
-        // Take the index provided and see if the least significant bit is zero or not
-        // if it is zero then and the tracking bits with the value stored in the masks table
-        // if we just used 0, then we do bits_ = bits_ & (0b1110) which will clear the least significant bit
-        // if the index is 1 then we do bits_ = bits | (0b0001) which will set the least significant bit
-        // when 2 => bits_ &= 0b1101 -> which will clear the next least significant bit
-        // and so on.
-        if (auto rIndex = index & 0b111; (rIndex & 0b1) == 0) {
-            bits_ &= masks[rIndex];
-        } else {
-            bits_ |= masks[rIndex];
-        }
-    }
-    static constexpr auto NumberOfGroups = 4;
-    [[nodiscard]] byte getLeastRecentlyUsed() const noexcept {
-        static bool initialized = false;
-        static byte counter = 0;
-        static byte randomTable[256] = { 0 };
-        static constexpr byte secondLookupTable[NumberOfGroups][2] {
-            { 1, 0 },
-            {3, 2},
-            {5, 4},
-            {7, 6},
-        };
-        if (!initialized) {
-            initialized = true;
-            counter = 0;
-            for (uint16_t i = 0; i < 256; ++i) {
-                randomTable[i] = random(0, NumberOfGroups);
-            }
-        }
-        auto theIndex = randomTable[counter++];
-        return secondLookupTable[theIndex][(bits_ & BitMaskTable_Byte[theIndex]) ? 1 : 0];
-    }
-private:
-    // This is RandPLRU Tree so we need to organize things correctly, I'm going to try four groups of two
-    CacheEntry ways_[NumberOfWays];
-    byte bits_ = 0;
-};
-
-template<byte numTagBits, byte numLowestBits, typename T, bool debugMode = false>
-class FourteenWayRandPLRUCacheWay {
-public:
-    static constexpr auto NumberOfWays = 14;
-    static constexpr auto NumberOfGroups = NumberOfWays / 2;
-    using CacheEntry = ::CacheEntry<numTagBits, numLowestBits, T, debugMode>;
-    using TaggedAddress = typename CacheEntry::TaggedAddress;
-    static constexpr auto NumBytesCached = CacheEntry::NumBytesCached;
-public:
-    CacheEntry& getLine(const TaggedAddress& theAddress) noexcept {
-        byte firstInvalid = NumberOfWays;
-        for (byte i = 0; i < NumberOfWays; ++i) {
-            if (ways_[i].matches(theAddress)) {
-                updateFlags(i);
-                return ways_[i];
-            } else if (firstInvalid == NumberOfWays && !ways_[i].isValid()) {
-                firstInvalid = i;
-            }
-        }
-        auto index = firstInvalid != NumberOfWays ? firstInvalid : getLeastRecentlyUsed();
-        updateFlags(index);
-        ways_[index].reset(theAddress);
-        return ways_[index];
-
-    }
-    void clear() noexcept {
-        for (auto& way : ways_) {
-            way.clear();
-        }
-        bits_ = 0;
-    }
-private:
-    void updateFlags(byte index) noexcept {
-        constexpr byte masks[NumberOfGroups*2] {
-                0b1111110, 0b0000001,
-                0b1111101, 0b0000010,
-                0b1111011, 0b0000100,
-                0b1110111, 0b0001000,
-                0b1101111, 0b0010000,
-                0b1011111, 0b0100000,
-                0b0111111, 0b1000000,
-        };
-        // taken from the 8way rand plru implementation
-        // Take the index provided and see if the least significant bit is zero or not
-        // if it is zero then and the tracking bits with the value stored in the masks table
-        // if we just used 0, then we do bits_ = bits_ & (0b1110) which will clear the least significant bit
-        // if the index is 1 then we do bits_ = bits | (0b0001) which will set the least significant bit
-        // when 2 => bits_ &= 0b1101 -> which will clear the next least significant bit
-        // and so on.
-        if (auto rIndex = index & 0b1111; (rIndex & 0b1) == 0) {
-            bits_ &= masks[rIndex];
-        } else {
-            bits_ |= masks[rIndex];
-        }
-    }
-    [[nodiscard]] byte getLeastRecentlyUsed() const noexcept {
-        static constexpr auto NumberOfRandomTableEntries = 256;
-        static bool initialized = false;
-        static byte counter = 0;
-        static byte randomTable[NumberOfRandomTableEntries] = { 0 };
-        static constexpr byte secondLookupTable[NumberOfGroups][2] {
-            { 1, 0 },
-            {3, 2},
-            {5, 4},
-            {7, 6},
-            {9, 8},
-            {11, 10},
-            {13, 12},
-        };
-        if (!initialized) {
-            initialized = true;
-            counter = 0;
-            for (uint16_t i = 0; i < NumberOfRandomTableEntries; ++i) {
-                randomTable[i] = random(0, NumberOfGroups);
-            }
-        }
-        auto theIndex = randomTable[counter++];
-        return secondLookupTable[theIndex][(bits_ & BitMaskTable_Byte[theIndex]) ? 1 : 0];
-    }
-public:
-    [[nodiscard]] constexpr size_t size() const noexcept { return NumberOfWays; }
-private:
-    CacheEntry ways_[NumberOfWays];
-    byte bits_ = 0;
-};
-
-template<byte numTagBits, byte numLowestBits, typename T, bool debugMode = false>
-class SixteenWayRandPLRUCacheWay {
-public:
-    static constexpr auto NumberOfWays = 16;
-    static constexpr auto NumberOfGroups = NumberOfWays / 2;
-    using CacheEntry = ::CacheEntry<numTagBits, numLowestBits, T, debugMode>;
-    using TaggedAddress = typename CacheEntry::TaggedAddress;
-    static constexpr auto NumBytesCached = CacheEntry::NumBytesCached;
-public:
-    CacheEntry& getLine(const TaggedAddress& theAddress) noexcept {
-        byte firstInvalid = NumberOfWays;
-        for (byte i = 0; i < NumberOfWays; ++i) {
-            if (ways_[i].matches(theAddress)) {
-                updateFlags(i);
-                return ways_[i];
-            } else if (firstInvalid == NumberOfWays && !ways_[i].isValid()) {
-                firstInvalid = i;
-            }
-        }
-        auto index = firstInvalid != NumberOfWays ? firstInvalid : getLeastRecentlyUsed();
-        updateFlags(index);
-        ways_[index].reset(theAddress);
-        return ways_[index];
-
-    }
-    void clear() noexcept {
-        for (auto& way : ways_) {
-            way.clear();
-        }
-        bits_ = 0;
-    }
-private:
-    void updateFlags(byte index) noexcept {
-        constexpr byte masks[NumberOfGroups*2] {
-                0b11111110, 0b00000001,
-                0b11111101, 0b00000010,
-                0b11111011, 0b00000100,
-                0b11110111, 0b00001000,
-                0b11101111, 0b00010000,
-                0b11011111, 0b00100000,
-                0b10111111, 0b01000000,
-                0b01111111, 0b10000000,
-        };
-        // taken from the 8way rand plru implementation
-        // Take the index provided and see if the least significant bit is zero or not
-        // if it is zero then and the tracking bits with the value stored in the masks table
-        // if we just used 0, then we do bits_ = bits_ & (0b1110) which will clear the least significant bit
-        // if the index is 1 then we do bits_ = bits | (0b0001) which will set the least significant bit
-        // when 2 => bits_ &= 0b1101 -> which will clear the next least significant bit
-        // and so on.
-        if (auto rIndex = index & 0b1111; (rIndex & 0b1) == 0) {
-            bits_ &= masks[rIndex];
-        } else {
-            bits_ |= masks[rIndex];
-        }
-    }
-    [[nodiscard]] byte getLeastRecentlyUsed() const noexcept {
-        static constexpr auto NumberOfRandomTableEntries = 256;
-        static bool initialized = false;
-        static byte counter = 0;
-        static byte randomTable[NumberOfRandomTableEntries] = { 0 };
-        static constexpr byte secondLookupTable[NumberOfGroups][2] {
-            { 1, 0 },
-            {3, 2},
-            {5, 4},
-            {7, 6},
-            {9, 8},
-            {11, 10},
-            {13, 12},
-            {15, 14},
-        };
-        if (!initialized) {
-            initialized = true;
-            counter = 0;
-            for (uint16_t i = 0; i < NumberOfRandomTableEntries; ++i) {
-                randomTable[i] = random(0, NumberOfGroups);
-            }
-        }
-        auto theIndex = randomTable[counter++];
-        return secondLookupTable[theIndex][(bits_ & BitMaskTable_Byte[theIndex]) ? 1 : 0];
-    }
-public:
-    [[nodiscard]] constexpr size_t size() const noexcept { return NumberOfWays; }
-private:
-    CacheEntry ways_[NumberOfWays];
-    byte bits_ = 0;
-};
-
-template<byte numTagBits, byte numLowestBits, typename T, bool debugMode = false>
-class TwelveWayRandPLRUCacheWay {
-public:
-    static constexpr auto NumberOfWays = 12;
-    static constexpr auto NumberOfGroups = NumberOfWays / 2;
-    using CacheEntry = ::CacheEntry<numTagBits, numLowestBits, T, debugMode>;
-    using TaggedAddress = typename CacheEntry::TaggedAddress;
-    static constexpr auto NumBytesCached = CacheEntry::NumBytesCached;
-public:
-    CacheEntry& getLine(const TaggedAddress& theAddress) noexcept {
-        byte firstInvalid = NumberOfWays;
-        for (byte i = 0; i < NumberOfWays; ++i) {
-            if (ways_[i].matches(theAddress)) {
-                updateFlags(i);
-                return ways_[i];
-            } else if (firstInvalid == NumberOfWays && !ways_[i].isValid()) {
-                firstInvalid = i;
-            }
-        }
-        auto index = firstInvalid != NumberOfWays ? firstInvalid : getLeastRecentlyUsed();
-        updateFlags(index);
-        ways_[index].reset(theAddress);
-        return ways_[index];
-
-    }
-    void clear() noexcept {
-        for (auto& way : ways_) {
-            way.clear();
-        }
-        bits_ = 0;
-    }
-private:
-    void updateFlags(byte index) noexcept {
-        constexpr byte masks[NumberOfGroups*2] {
-                0b111110, 0b000001,
-                0b111101, 0b000010,
-                0b111011, 0b000100,
-                0b110111, 0b001000,
-                0b101111, 0b010000,
-                0b011111, 0b100000,
-        };
-        // taken from the 8way rand plru implementation
-        // Take the index provided and see if the least significant bit is zero or not
-        // if it is zero then and the tracking bits with the value stored in the masks table
-        // if we just used 0, then we do bits_ = bits_ & (0b1110) which will clear the least significant bit
-        // if the index is 1 then we do bits_ = bits | (0b0001) which will set the least significant bit
-        // when 2 => bits_ &= 0b1101 -> which will clear the next least significant bit
-        // and so on.
-        if (auto rIndex = index & 0b1111; (rIndex & 0b1) == 0) {
-            bits_ &= masks[rIndex];
-        } else {
-            bits_ |= masks[rIndex];
-        }
-    }
-    [[nodiscard]] byte getLeastRecentlyUsed() const noexcept {
-        static constexpr auto NumberOfRandomTableEntries = 256;
-        static bool initialized = false;
-        static byte counter = 0;
-        static byte randomTable[NumberOfRandomTableEntries] = { 0 };
-        static constexpr byte secondLookupTable[NumberOfGroups][2] {
-            { 1, 0 },
-            {3, 2},
-            {5, 4},
-            {7, 6},
-            {9, 8},
-            {11, 10},
-            //{13, 12},
-            //{15, 14},
-        };
-        if (!initialized) {
-            initialized = true;
-            counter = 0;
-            for (uint16_t i = 0; i < NumberOfRandomTableEntries; ++i) {
-                randomTable[i] = random(0, NumberOfGroups);
-            }
-        }
-        auto theIndex = randomTable[counter++];
-        return secondLookupTable[theIndex][(bits_ & BitMaskTable_Byte[theIndex]) ? 1 : 0];
-    }
-public:
-    [[nodiscard]] constexpr size_t size() const noexcept { return NumberOfWays; }
-private:
-    CacheEntry ways_[NumberOfWays];
-    byte bits_ = 0;
-};
-
 template<byte numTagBits, byte numLowestBits, typename T, bool debugMode = false>
 class TenWayRandPLRUCacheWay {
 public:
@@ -406,6 +59,27 @@ public:
         return ways_[index];
 
     }
+    const CacheEntry&
+    getLine(const TaggedAddress& theAddress) const noexcept {
+        byte firstInvalid = NumberOfWays;
+        for (byte i = 0; i < NumberOfWays; ++i) {
+            if (ways_[i].matches(theAddress)) {
+                updateFlags(i);
+                if constexpr (debugMode) {
+                    Serial.print("\tMatch against index: ");
+                    Serial.println(i);
+                }
+                return ways_[i];
+            } else if (firstInvalid == NumberOfWays && !ways_[i].isValid()) {
+                firstInvalid = i;
+            }
+        }
+        auto index = firstInvalid != NumberOfWays ? firstInvalid : getLeastRecentlyUsed();
+        updateFlags(index);
+        ways_[index].reset(theAddress);
+        return ways_[index];
+
+    }
     void clear() noexcept {
         for (auto& way : ways_) {
             way.clear();
@@ -413,7 +87,7 @@ public:
         bits_ = 0;
     }
 private:
-    void updateFlags(byte index) noexcept {
+    void updateFlags(byte index) const noexcept {
         // This is really a two dimensional array but flattened to improve efficiency
         constexpr byte masks[NumberOfGroups*2] {
                 0b11110, 0b00001,
@@ -460,7 +134,7 @@ private:
 public:
     [[nodiscard]] constexpr size_t size() const noexcept { return NumberOfWays; }
 private:
-    CacheEntry ways_[NumberOfWays];
-    byte bits_ = 0;
+    mutable CacheEntry ways_[NumberOfWays];
+    mutable byte bits_ = 0;
 };
 #endif //SXCHIPSET_MANAGEMENTENGINE_SETASSOCIATIVERANDPLRUCACHESETS_H

@@ -56,7 +56,25 @@ public:
         // only align if we need to reset the chip
         return getLine(TaggedAddress(ProcessorInterface::getAddress()));
     }
+    [[nodiscard]] const CacheEntry& getLine() const noexcept {
+        // only align if we need to reset the chip
+        return getLine(TaggedAddress(ProcessorInterface::getAddress()));
+    }
     [[nodiscard]] CacheEntry& getLine(const TaggedAddress& theAddress) noexcept {
+        // only align if we need to reset the chip
+        if constexpr (debugMode) {
+            Serial.print(F("Address Decomp: 0x"));
+            Serial.print(theAddress.getRest(), HEX);
+            Serial.print(F(", 0x"));
+            Serial.print(theAddress.getTagIndex(), HEX);
+            Serial.print(F(", 0x"));
+            Serial.print(theAddress.getLowest(), HEX);
+            Serial.print(F(" -> 0x"));
+            Serial.println(theAddress.getAddress(), HEX);
+        }
+        return entries_[theAddress.getTagIndex()].getLine(theAddress);
+    }
+    [[nodiscard]] const CacheEntry& getLine(const TaggedAddress& theAddress) const noexcept {
         // only align if we need to reset the chip
         if constexpr (debugMode) {
             Serial.print(F("Address Decomp: 0x"));

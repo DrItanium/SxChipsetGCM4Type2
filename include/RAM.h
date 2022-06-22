@@ -57,12 +57,13 @@ public:
     ~RAM() override = default;
     void write(uint32_t address, SplitWord16 value, LoadStoreStyle lss) noexcept override {
         auto& line = theCache_.getLine(TaggedAddress{address});
-        line.set(value, lss);
+        line.set(ProcessorInterface::getCacheOffsetEntry<Cache_t::CacheEntryMask>(SplitWord32{address}),
+                 lss,
+                 value);
     }
     [[nodiscard]]
     uint16_t
     read(uint32_t address, LoadStoreStyle lss) const noexcept override {
-        auto& line = theCache_.getLine(TaggedAddress{address});
         return theCache_.getLine(TaggedAddress{address}).get(ProcessorInterface::getCacheOffsetEntry<Cache_t::CacheEntryMask>(SplitWord32{address}));
     }
     uint32_t write(uint32_t baseAddress, uint8_t *data, uint32_t count) noexcept override {
