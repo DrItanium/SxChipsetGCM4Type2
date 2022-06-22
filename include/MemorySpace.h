@@ -84,9 +84,8 @@ public:
     [[nodiscard]] constexpr auto getEndAddress() const noexcept { return endAddress_; }
     [[nodiscard]] constexpr auto getInternalMask() const noexcept { return internalMask_; }
 
-    void handleRequest() noexcept {
-
-    }
+    virtual void handleReadRequest() noexcept;
+    virtual void handleWriteRequest() noexcept;
 private:
     uint32_t numberOfPages_;
     uint32_t baseAddress_;

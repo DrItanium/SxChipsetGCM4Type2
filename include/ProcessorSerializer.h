@@ -77,7 +77,7 @@ public:
         address_.bytes[1] = lower;
         address_.bytes[2] = higher;
         address_.bytes[3] = highest;
-        updateTargetFunctions<inDebugMode>();
+        //updateTargetFunctions<inDebugMode>();
     }
 
     template<bool inDebugMode>
