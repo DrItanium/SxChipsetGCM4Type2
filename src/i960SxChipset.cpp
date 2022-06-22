@@ -537,6 +537,7 @@ std::shared_ptr<CompleteMemorySpace> fullSpace;
 void
 setupMemoryMap() {
     fullSpace = std::make_shared<CompleteMemorySpace>();
+    fullSpace->emplace_back<CoreChipsetFeatures>();
     /// @todo implement
 }
 MemorySpace::Ptr

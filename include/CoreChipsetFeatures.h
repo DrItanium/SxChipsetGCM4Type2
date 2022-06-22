@@ -37,58 +37,60 @@ public:
     static constexpr Address IOBaseAddress = 0xFFFF'0000;
     using Parent = MemorySpace;
 public:
-    CoreChipsetFeatures() : Parent(0xFFFF'0000, 33) { }
+    CoreChipsetFeatures() : Parent(0xFFFF'0000, 32) { }
     ~CoreChipsetFeatures() override = default;
     void
     setAddress(uint8_t page, uint8_t offset, uint32_t address, uint32_t flags) {
         auto targetPage = page & 0b11111;
         auto targetOffset = offset & 0b11111;
-        activeConfigurationPages_ |= (1 << targetPage);
-        enabledDevices_[targetPage] |= (1 << targetOffset);
         entries_[targetPage][targetOffset] = ConfigurationEntry{address, flags};
     }
 
 private:
-
-    [[nodiscard]] uint16_t
-    readFromFirstPage(uint8_t offset) const noexcept {
-        switch (offset) {
-            case 0: return static_cast<uint16_t>(activeConfigurationPages_);
-            case 2: return static_cast<uint16_t>(activeConfigurationPages_ >> 16);
-            // for safety sake I'm going to hardcode this
-#define Y(ind) \
-           case (4 * (ind + 1)): return static_cast<uint16_t>(enabledDevices_[ind]); \
-            case (4 * (ind + 1)) + 2: return static_cast<uint16_t>(enabledDevices_[ind] >> 16)
-            Y(0); Y(1); Y(2); Y(3); Y(4); Y(5); Y(6); Y(7);
-            Y(8); Y(9); Y(10); Y(11); Y(12); Y(13); Y(14); Y(15);
-            Y(16); Y(17); Y(18); Y(19); Y(20); Y(21); Y(22); Y(23);
-            Y(24); Y(25); Y(26); Y(27); Y(28); Y(29); Y(30); Y(31);
-#undef Y
-            default:
-                return 0;
-
-
+    static constexpr auto computeTargetPage(uint32_t address) noexcept {
+        return static_cast<uint8_t>((address >> 8) & 0x1F);
+    }
+    static constexpr auto computeTargetOffset(uint32_t address) noexcept {
+        return static_cast<uint8_t>(address);
+    }
+    static constexpr auto makeRelativeAddress(uint32_t address) noexcept {
+        return address & 0x1FFF;
+    }
+    static constexpr auto computeNumberOfBytesToWalk(uint32_t baseAddress, uint32_t count) noexcept {
+        if (auto numAvailableBytes = EndRelativeAddress - makeRelativeAddress(baseAddress); numAvailableBytes < count) {
+            return numAvailableBytes;
+        } else {
+            return count;
         }
+    }
+    static constexpr std::tuple<uint8_t, uint8_t> computeTarget(uint32_t address) noexcept {
+        return std::make_tuple<uint8_t, uint8_t>(computeTargetPage(address), computeTargetOffset(address));
     }
 public:
     [[nodiscard]] uint16_t read(uint32_t address, LoadStoreStyle lss) const noexcept override {
-        auto targetPage = static_cast<uint8_t>((address >> 8) & 0x1F);
-        auto targetOffset = static_cast<uint8_t>(address);
+        auto [targetPage, targetOffset] = computeTarget(address);
         return readGeneric(targetPage, targetOffset, lss);
+    }
+    uint32_t
+    read(uint32_t address, uint8_t* container, uint32_t count) noexcept override {
+        // start at the target address after computing the actual begin and end
+        auto numberOfBytesToWalk = computeNumberOfBytesToWalk(address, count);
+        auto startPosition = makeRelativeAddress(address);
+        auto endPosition = startPosition + numberOfBytesToWalk;
+        auto* entryView = reinterpret_cast<uint8_t*>(&this->entries_);
+        auto* window = container;
+        for (auto p = startPosition; p < endPosition; ++p, ++window) {
+            *window = entryView[p];
+        }
+        return numberOfBytesToWalk;
+    }
+    uint32_t
+    write(uint32_t address, uint8_t*, uint32_t count) noexcept override {
+        return computeNumberOfBytesToWalk(address, count);
     }
 private:
     [[nodiscard]] uint16_t readGeneric(uint8_t targetPage, uint8_t offset, LoadStoreStyle lss) const noexcept {
-        switch (targetPage) {
-            case 0:
-                return readFromFirstPage(offset);
-            case 1: case 2: case 3: case 4: case 5: case 6: case 7: case 8:
-            case 9: case 10: case 11: case 12: case 13: case 14: case 15: case 16:
-            case 17: case 18: case 19: case 20: case 21: case 22: case 23: case 24:
-            case 25: case 26: case 27: case 28: case 29: case 30: case 31: case 32:
-                return entries_[targetPage - 1][(offset & 0b11111'000) >> 3].read(offset & 0b111);
-            default:
-                return 0;
-        }
+        return entries_[targetPage & 0x1F][(offset >> 3) & 0x1F].read(offset & 0b111);
     }
 private:
     struct ConfigurationEntry {
@@ -111,17 +113,11 @@ private:
             }
         }
     };
-    /**
-     * @brief Describes which of the 32 pages contain active entries, a 1 means there are available entries in there
-     */
-    uint32_t activeConfigurationPages_ = 0;
-    /**
-     * @brief A series of 32-bit values which describe which entries in a given table are available for querying. A 1 means that the given item is available
-     */
-    uint32_t enabledDevices_[32] { 0 };
+    static inline constexpr uint32_t EndRelativeAddress = 256*32;
     /**
      * @brief The 32 pages with 32 entries each
      */
     ConfigurationEntry entries_[32][32];
+    static_assert(sizeof(entries_) == 256*32, "Entry block must be 256 bytes * 32 pages in size!");
 };
 #endif //I960SXCHIPSET_CORECHIPSETFEATURES_H

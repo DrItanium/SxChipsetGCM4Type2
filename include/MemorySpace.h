@@ -78,8 +78,8 @@ public:
         return address >= baseAddress_ && address < endAddress_;
     }
 
-    virtual size_t write(uint32_t baseAddress, uint8_t* data, size_t count) noexcept = 0;
-    virtual size_t read(uint32_t baseAddress, uint8_t* data, size_t count) noexcept = 0;
+    virtual uint32_t write(uint32_t baseAddress, uint8_t* data, uint32_t count) noexcept = 0;
+    virtual uint32_t read(uint32_t baseAddress, uint8_t* data, uint32_t count) noexcept = 0;
     [[nodiscard]] constexpr auto getNumberOfPages() const noexcept { return numberOfPages_; }
     [[nodiscard]] constexpr auto getBaseAddress() const noexcept { return baseAddress_; }
     [[nodiscard]] constexpr auto getEndAddress() const noexcept { return endAddress_; }
@@ -173,8 +173,12 @@ public:
         auto target = std::make_shared<T>(baseAddress, numBlocks, rest...);
         emplace_back(target);
     }
-    size_t
-    write(uint32_t baseAddress, uint8_t* data, size_t count) noexcept override {
+    template<typename T, typename ... Args>
+    void emplace_back(Args&&... rest) noexcept {
+        emplace_back(std::make_shared<T>());
+    }
+    uint32_t
+    write(uint32_t baseAddress, uint8_t* data, uint32_t count) noexcept override {
         // bypass lastMatch to make sure we always do the right thing
         if (auto result = find(baseAddress); result) {
             return result->write(baseAddress, data, count);
@@ -183,8 +187,8 @@ public:
         }
 
     }
-    size_t
-    read(uint32_t baseAddress, uint8_t* data, size_t count) noexcept override {
+    uint32_t
+    read(uint32_t baseAddress, uint8_t* data, uint32_t count) noexcept override {
         if (auto result = find(baseAddress); result) {
             return result->read(baseAddress, data, count);
         } else {
