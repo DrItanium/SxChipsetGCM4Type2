@@ -106,7 +106,7 @@ public:
     ~ContainerSpace() override = default;
 
     void
-    write(uint32_t address, uint16_t value, LoadStoreStyle lss) noexcept override {
+    write(uint32_t address, SplitWord16 value, LoadStoreStyle lss) noexcept override {
         if (lastMatch_) {
             lastMatch_->write(address, value, lss);
         } else {
@@ -132,7 +132,7 @@ public:
 
         }
     }
-private:
+protected:
     MemorySpace::Ptr
     find(uint32_t address) const noexcept {
         for (const auto& subSpace : subSpaces_) {
@@ -142,20 +142,24 @@ private:
         }
         return nullptr;
     }
+    bool
+    updateLastMatch(uint32_t address) const noexcept {
+        if (lastMatch_ && lastMatch_->respondsTo(address)) {
+            return true;
+        } else {
+            if (auto subSpace = find(address); subSpace) {
+                lastMatch_ = subSpace;
+                return true;
+            } else {
+                return false;
+            }
+        }
+    }
 public:
     bool
     respondsTo(uint32_t address) const noexcept override {
         if (Parent::respondsTo(address)) {
-            if (lastMatch_ && lastMatch_->respondsTo(address)) {
-                return true;
-            } else {
-                if (auto subSpace = find(address); subSpace) {
-                    lastMatch_ = subSpace;
-                    return true;
-                } else {
-                    return false;
-                }
-            }
+            return updateLastMatch(address);
         } else {
             return false;
         }
@@ -188,9 +192,20 @@ public:
     }
     void handleReadRequest() noexcept override;
     void handleWriteRequest() noexcept override;
+
 private:
     // yes mutable is gross but I have an interface to satisfy
     mutable MemorySpace::Ptr lastMatch_ = nullptr;
     std::vector<MemorySpace::Ptr> subSpaces_;
+};
+class CompleteMemorySpace : public ContainerSpace {
+public:
+    using Self = CompleteMemorySpace;
+    using Parent = ContainerSpace;
+public:
+    CompleteMemorySpace() : Parent(0, 0x00FFFFFF) { }
+    bool respondsTo(uint32_t address) const noexcept override { return true; }
+    void handleReadRequest() noexcept override;
+    void handleWriteRequest() noexcept override;
 };
 #endif //SXCHIPSETGCM4TYPE2_MEMORYSPACE_H

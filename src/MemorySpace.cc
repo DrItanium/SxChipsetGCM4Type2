@@ -79,3 +79,15 @@ ContainerSpace::handleReadRequest() noexcept {
         Parent::handleReadRequest();
     }
 }
+
+void
+CompleteMemorySpace::handleReadRequest() noexcept {
+    (void)updateLastMatch(ProcessorInterface::getAddress());
+    Parent::handleReadRequest();
+}
+
+void
+CompleteMemorySpace::handleWriteRequest() noexcept {
+    (void)updateLastMatch(ProcessorInterface::getAddress());
+    Parent::handleWriteRequest();
+}
