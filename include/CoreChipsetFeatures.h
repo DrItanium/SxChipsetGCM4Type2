@@ -36,6 +36,8 @@ class CoreChipsetFeatures : public MemorySpace {
 public:
     static constexpr Address IOBaseAddress = 0xFFFF'0000;
     using Parent = MemorySpace;
+    using Self = CoreChipsetFeatures;
+    using Ptr = std::shared_ptr<Self>;
 public:
     CoreChipsetFeatures() : Parent(0xFFFF'0000, 32) { }
     ~CoreChipsetFeatures() override = default;

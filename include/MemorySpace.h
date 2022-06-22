@@ -206,6 +206,7 @@ class CompleteMemorySpace : public ContainerSpace {
 public:
     using Self = CompleteMemorySpace;
     using Parent = ContainerSpace;
+    using Ptr = std::shared_ptr<Self>;
 public:
     CompleteMemorySpace() : Parent(0, 0x00FFFFFF) { }
     bool respondsTo(uint32_t address) const noexcept override { return true; }

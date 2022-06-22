@@ -80,7 +80,7 @@ constexpr auto CacheSize = TargetBoard::getCacheSize();
 //using L1Cache = Cache2Instance_t<FourteenWayRandPLRUCacheWay, 128, CacheLineSize, BackingMemoryStorage_t, CompileInAddressDebuggingSupport>;
 using L1Cache = Cache2Instance_t<TenWayRandPLRUCacheWay, 256, CacheLineSize, BackingMemoryStorage_t, CompileInAddressDebuggingSupport>;
 
-L1Cache theCache;
+//L1Cache theCache;
 
 void waitForCycleUnlock() noexcept {
     ManagementEngine::waitForCycleUnlock();
@@ -91,135 +91,10 @@ void waitForCycleUnlock() noexcept {
 constexpr auto IncrementAddress = true;
 constexpr auto LeaveAddressAlone = false;
 // while the i960 does not allow going beyond 8 words, we can use the number of words cached in all cases to be safe
-constexpr byte MaximumNumberOfWordsTransferrableInASingleTransaction = decltype(theCache)::NumWordsCached;
 void displayRequestedAddress() noexcept {
     auto address = ProcessorInterface::getAddress();
     Serial.print(F("ADDRESS: 0x"));
     Serial.println(address, HEX);
-}
-
-template<bool inDebugMode>
-void fallbackBodyRead() noexcept {
-    if constexpr (inDebugMode) {
-        displayRequestedAddress();
-    }
-    ProcessorInterface::setupDataLinesForRead();
-    do {
-        // wait for
-        waitForCycleUnlock();
-        ProcessorInterface::setDataBits(0);
-        if (informCPU()) {
-            break;
-        }
-        ProcessorInterface::burstNext<LeaveAddressAlone>();
-    } while (true);
-}
-template<bool inDebugMode>
-void fallbackBodyWrite() noexcept {
-    if constexpr (inDebugMode) {
-        displayRequestedAddress();
-    }
-    ProcessorInterface::setupDataLinesForWrite();
-    do {
-        // wait for
-        waitForCycleUnlock();
-        // get the data bits but do nothing with it just to delay things
-        (void)ProcessorInterface::getDataBits();
-        if (informCPU()) {
-            break;
-        }
-        ProcessorInterface::burstNext<LeaveAddressAlone>();
-    } while (true);
-}
-template<bool inDebugMode>
-void fallbackBody() noexcept {
-    // fallback, be consistent to make sure we don't run faster than the i960
-    if (ProcessorInterface::isReadOperation()) {
-        fallbackBodyRead<inDebugMode>();
-    } else {
-        fallbackBodyWrite<inDebugMode>();
-    }
-}
-template<bool inDebugMode>
-void handleMemoryInterfaceRead() noexcept {
-    if constexpr (inDebugMode) {
-        displayRequestedAddress();
-    }
-    auto start = ProcessorInterface::getCacheOffsetEntry<decltype(theCache)::CacheEntryMask>();
-    auto end = start + 8;
-    auto& theEntry = theCache.getLine();
-    // when dealing with read operations, we can actually easily unroll the do while by starting at the cache offset entry and walking
-    // forward until we either hit the end of the cache line or blast is asserted first (both are valid states)
-    for (auto i = start; i < end; ++i) {
-        // start working on getting the given value way ahead of cycle unlock happening
-        waitForCycleUnlock();
-        if constexpr (inDebugMode && CompileInExtendedDebugInformation) {
-            auto outcome = theEntry.get(i);
-            Serial.print(F("\tOffset: 0x")) ;
-            Serial.print(i << 1, HEX);
-            Serial.print(F(" (")) ;
-            Serial.print(i);
-            Serial.print(F("),  Read the value: 0x"));
-            Serial.println(outcome, HEX);
-            ProcessorInterface::setDataBits(outcome);
-        } else {
-            ProcessorInterface::setDataBits(theEntry.get(i));
-        }
-        // Only pay for what we need even if it is slower
-        if (informCPU()) {
-            break;
-        }
-        // so if I don't increment the address, I think we run too fast xD based on some experimentation
-        ProcessorInterface::burstNext<LeaveAddressAlone>();
-    }
-}
-template<bool inDebugMode>
-void handleMemoryInterfaceWrite() noexcept {
-    if constexpr (inDebugMode) {
-        displayRequestedAddress();
-    }
-    auto start = ProcessorInterface::getCacheOffsetEntry<decltype(theCache)::CacheEntryMask>();
-    auto end = start + 8;
-    auto& theEntry = theCache.getLine();
-    // when dealing with writes to the cache line we are safe in just looping through from the start to at most 8 because that is as
-    // far as we can go with how the Sx works!
-
-    // Also the manual states that the processor cannot burst across 16-byte boundaries so :D.
-    for (auto i = start; i < end; ++i) {
-        waitForCycleUnlock();
-        if constexpr (inDebugMode && CompileInExtendedDebugInformation) {
-            auto bits = ProcessorInterface::getDataBits();
-            Serial.print(F("\tOffset: 0x")) ;
-            Serial.print(i << 1, HEX);
-            Serial.print(F(" (")) ;
-            Serial.print(i);
-            Serial.print(F("),  Writing the value: 0x"));
-            Serial.println(bits.getWholeValue(), HEX);
-            theEntry.set(i, ProcessorInterface::getStyle(), bits);
-        } else {
-
-            theEntry.set(i, ProcessorInterface::getStyle(), ProcessorInterface::getDataBits());
-        }
-        if (informCPU()) {
-            break;
-        }
-        // the manual doesn't state that the burst transaction will always have BE0 and BE1 pulled low and this is very true, you must
-        // check the pins because it will do unaligned burst transactions but even that will never span multiple 16-byte entries
-        // so if I don't increment the address, I think we run too fast xD based on some experimentation
-        ProcessorInterface::burstNext<LeaveAddressAlone>();
-    }
-}
-template<bool inDebugMode>
-void handleMemoryInterface() noexcept {
-    // okay we are dealing with the psram chips
-    // now take the time to compute the cache offset entries
-    if (ProcessorInterface::isReadOperation()) {
-        ProcessorInterface::setupDataLinesForRead();
-        handleMemoryInterfaceRead<inDebugMode>();
-    } else {
-        ProcessorInterface::setupDataLinesForWrite();
-        handleMemoryInterfaceWrite<inDebugMode>();
-    }
 }
 template<bool inDebugMode, typename T>
 void handleExternalDeviceRequestRead() noexcept {
@@ -320,6 +195,10 @@ void doInvocationBody() noexcept {
         invocationBody<false>();
     }
 }
+using SystemRam_t = RAM<BackingMemoryStorage_t>;
+SystemRam_t::Ptr theRAM;
+CoreChipsetFeatures::Ptr configurationSpace;
+
 void installBootImage() noexcept {
 
     // okay now we need to actually open boot.system and copy it into the ramBlock
@@ -333,18 +212,18 @@ void installBootImage() noexcept {
             // okay we were successful in opening the file, now copy the image into psram
         Address size = theFile.size();
         Serial.println(F("TRANSFERRING BOOT.SYS TO RAM"));
-        static constexpr auto CacheSize = theCache.getCacheSize();
+        auto cacheSize = theRAM->getCacheSize();
         //static constexpr auto CacheSize = ::CacheSize;
-        auto *storage = theCache.viewAsStorage();
+        auto *storage = theRAM->viewCacheAsStorage();
         if constexpr (ValidateTransferDuringInstall) {
-            static constexpr auto RealCacheSize = CacheSize / 2;
+            auto realCacheSize = cacheSize / 2;
             byte* storage0 = storage;
-            byte* storage1 = storage + (RealCacheSize);
-            for (Address addr = 0; addr < size; addr += RealCacheSize) {
+            byte* storage1 = storage + (realCacheSize);
+            for (Address addr = 0; addr < size; addr += realCacheSize) {
                 // do a linear read from the start to the end of storage
                 // wait around to make sure we don't run afoul of the sdcard itself
                 while (theFile.isBusy());
-                auto numRead = theFile.read(storage0, RealCacheSize);
+                auto numRead = theFile.read(storage0, realCacheSize);
                 if (numRead < 0) {
                     // something wen't wrong so halt at this point
                     SD.errorHalt();
@@ -386,7 +265,7 @@ void installBootImage() noexcept {
         // make sure we close the file before destruction
         theFile.close();
         // clear both caches to be on the safe side
-        theCache.clear();
+        theRAM->clear();
     }
 }
 
@@ -486,7 +365,7 @@ void setup() {
         }
     }
     // setup the pins that could be attached to an io expander separately
-    theCache.begin();
+    //theCache.begin();
     // purge the cache pages
     Serial.println(F("i960Sx chipset bringup"));
     ProcessorInterface::begin();
@@ -534,11 +413,14 @@ signalHaltState(const std::string& haltMsg) noexcept {
     signalHaltState(haltMsg.c_str());
 }
 #endif
-std::shared_ptr<CompleteMemorySpace> fullSpace;
+CompleteMemorySpace::Ptr fullSpace;
 void
 setupMemoryMap() {
     fullSpace = std::make_shared<CompleteMemorySpace>();
-    fullSpace->emplace_back<CoreChipsetFeatures>();
+    theRAM = std::make_shared<SystemRam_t>();
+    configurationSpace = std::make_shared<CoreChipsetFeatures>();
+    fullSpace->emplace_back(configurationSpace);
+    fullSpace->emplace_back(theRAM);
     /// @todo implement
 }
 MemorySpace::Ptr

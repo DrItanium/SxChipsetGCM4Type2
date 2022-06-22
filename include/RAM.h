@@ -37,6 +37,7 @@ template<typename S>
 class RAM : public MemorySpace {
 public:
     using Self = RAM;
+    using Ptr = std::shared_ptr<Self>;
     using Parent = MemorySpace;
     using BackingMemoryStorage_t = S;
     static constexpr auto CacheLineSize = TargetBoard::getCacheLineSizeInBits();
@@ -73,11 +74,47 @@ public:
         return 0;
     }
     void handleReadRequest() noexcept override {
-        MemorySpace::handleReadRequest();
+        auto start = ProcessorInterface::getCacheOffsetEntry<decltype(theCache_)::CacheEntryMask>();
+        auto end = start + 8;
+        auto& theEntry = theCache_.getLine();
+        // when dealing with read operations, we can actually easily unroll the do while by starting at the cache offset entry and walking
+        // forward until we either hit the end of the cache line or blast is asserted first (both are valid states)
+        for (auto i = start; i < end; ++i) {
+            // start working on getting the given value way ahead of cycle unlock happening
+            ManagementEngine::waitForCycleUnlock();
+            ProcessorInterface::setDataBits(theEntry.get(i));
+            // Only pay for what we need even if it is slower
+            if (ManagementEngine::informCPU()) {
+                break;
+            }
+            // so if I don't increment the address, I think we run too fast xD based on some experimentation
+            ProcessorInterface::burstNext<false>();
+        }
     }
     void handleWriteRequest() noexcept override {
-        MemorySpace::handleWriteRequest();
+        auto start = ProcessorInterface::getCacheOffsetEntry<Cache_t::CacheEntryMask>();
+        auto end = start + 8;
+        auto& theEntry = theCache_.getLine();
+        // when dealing with writes to the cache line we are safe in just looping through from the start to at most 8 because that is as
+        // far as we can go with how the Sx works!
+
+        // Also the manual states that the processor cannot burst across 16-byte boundaries so :D.
+        for (auto i = start; i < end; ++i) {
+            ManagementEngine::waitForCycleUnlock();
+            theEntry.set(i, ProcessorInterface::getStyle(),
+                         ProcessorInterface::getDataBits());
+            if (ManagementEngine::informCPU()) {
+                break;
+            }
+            // the manual doesn't state that the burst transaction will always have BE0 and BE1 pulled low and this is very true, you must
+            // check the pins because it will do unaligned burst transactions but even that will never span multiple 16-byte entries
+            // so if I don't increment the address, I think we run too fast xD based on some experimentation
+            ProcessorInterface::burstNext<false>();
+        }
     }
+    byte* viewCacheAsStorage() noexcept { return theCache_.viewAsStorage(); }
+    void clear() noexcept { theCache_.clear(); }
+    constexpr auto getCacheSize() const noexcept { return theCache_.getCacheSize(); }
 private:
     Cache_t theCache_;
 };
