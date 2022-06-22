@@ -49,18 +49,21 @@ public:
     }
 
 private:
-    uint16_t
+
+    [[nodiscard]] uint16_t
     readFromFirstPage(uint8_t offset) const noexcept {
         switch (offset) {
             case 0: return static_cast<uint16_t>(activeConfigurationPages_);
             case 2: return static_cast<uint16_t>(activeConfigurationPages_ >> 16);
-#define X(ind) case ind: return static_cast<uint16_t>(enabledDevices_[ind - 4]); \
-              case ind + 2 : return static_cast<uint16_t>(enabledDevices_[ind - 4] >> 16)
-            X(4); X(8); X(12); X(16); X(20); X(24); X(28); X(32);
-            X(36); X(40); X(44); X(48); X(52); X(56); X(60); X(64);
-            X(68); X(72); X(76); X(80); X(84); X(88); X(92); X(96);
-            X(100); X(104); X(108); X(112); X(116); X(120); X(124); X(128);
-#undef X
+            // for safety sake I'm going to hardcode this
+#define Y(ind) \
+           case (4 * (ind + 1)): return static_cast<uint16_t>(enabledDevices_[ind]); \
+            case (4 * (ind + 1)) + 2: return static_cast<uint16_t>(enabledDevices_[ind] >> 16)
+            Y(0); Y(1); Y(2); Y(3); Y(4); Y(5); Y(6); Y(7);
+            Y(8); Y(9); Y(10); Y(11); Y(12); Y(13); Y(14); Y(15);
+            Y(16); Y(17); Y(18); Y(19); Y(20); Y(21); Y(22); Y(23);
+            Y(24); Y(25); Y(26); Y(27); Y(28); Y(29); Y(30); Y(31);
+#undef Y
             default:
                 return 0;
 
