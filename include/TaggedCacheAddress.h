@@ -5,7 +5,7 @@
 #ifndef SXCHIPSET_TAGGEDCACHEADDRESS_H
 #define SXCHIPSET_TAGGEDCACHEADDRESS_H
 #include "MCUPlatform.h"
-#include "type_traits.h"
+#include <type_traits>
 template<byte tagBits, byte offsetBits = 4, bool debugMode = false>
 union TaggedAddress {
     static constexpr auto NumLowestBits = offsetBits;

@@ -44,7 +44,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "TaggedCacheAddress.h"
 #include "RTCInterface.h"
 #include "i960SxChipset.h"
-#include "type_traits.h"
+#include <type_traits>
 #include "ManagementEngine.h"
 #include "RAM.h"
 constexpr auto RTCBaseAddress = 0xFA00'0000;
