@@ -30,35 +30,11 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #define SXCHIPSET_I960SXCHIPSET_H
 #include <string>
 #include <tuple>
-using BodyFunction = void (*)();
-using SplitBodyFunction = std::tuple<BodyFunction, BodyFunction>;
-BodyFunction getNonDebugBody(byte index) noexcept;
-BodyFunction getDebugBody(byte index) noexcept;
+#include "MemorySpace.h"
 
-template<bool inDebugMode>
-BodyFunction getBody(byte index) noexcept {
-    if constexpr (inDebugMode) {
-        return getDebugBody(index);
-    } else {
-        return getNonDebugBody(index);
-    }
-}
-SplitBodyFunction getSplitNonDebugBody(byte index) noexcept;
-SplitBodyFunction getSplitDebugBody(byte index) noexcept;
-
-template<bool inDebugMode>
-SplitBodyFunction getSplitBody(byte index) noexcept {
-    if constexpr (inDebugMode) {
-        return getSplitDebugBody(index);
-    } else {
-        return getSplitNonDebugBody(index);
-    }
-}
-
+MemorySpace::Ptr getMemory() noexcept;
 [[noreturn]] void signalHaltState(const __FlashStringHelper* msg) noexcept;
 [[noreturn]] void signalHaltState(const char* msg) noexcept;
-#ifdef __arm__
 [[noreturn]] void signalHaltState(const std::string& msg) noexcept;
-#endif
 
 #endif //SXCHIPSET_I960SXCHIPSET_H

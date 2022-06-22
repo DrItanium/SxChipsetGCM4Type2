@@ -45,7 +45,6 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "RTCInterface.h"
 #include "i960SxChipset.h"
 #include "type_traits.h"
-#include "MMIOSpace.h"
 
 constexpr auto RTCBaseAddress = 0xFA00'0000;
 constexpr auto Serial0BaseAddress = 0xFB00'0000;
@@ -406,6 +405,7 @@ void waitForBootSignal() noexcept {
 }
 // the setup routine runs once when you press reset:
 constexpr auto TestReadyPinSignal = false;
+void setupMemoryMap();
 void setup() {
     // by resetting the 4809 we are resetting the entire system
     DigitalPin<i960Pinout::Reset4809>::configure();
@@ -498,7 +498,7 @@ void setup() {
     Serial.println(F("i960Sx chipset bringup"));
     ProcessorInterface::begin();
     BackingMemoryStorage_t::begin();
-    setupDispatchTable();
+    setupMemoryMap();
     installBootImage();
     delay(100);
     Serial.println(F("i960Sx chipset brought up fully!"));
@@ -511,40 +511,6 @@ void setup() {
     ProcessorInterface::setupDataLinesForRead();
     waitForBootSignal();
 }
-// ----------------------------------------------------------------
-// state machine
-// ----------------------------------------------------------------
-// The bootup process has a separate set of states
-// TStart - Where we start
-// TSystemTest - Processor performs self test
-//
-// TStart -> TSystemTest via FAIL being asserted
-// TSystemTest -> Ti via FAIL being deasserted
-//
-// State machine will stay here for the duration
-// State diagram based off of i960SA/SB Reference manual
-// Basic Bus States
-// Ti - Idle State
-// Ta - Address State
-// Td - Data State
-// Tw - Wait State
-
-// READY - ~READY asserted
-// NOT READY - ~READY not asserted
-// BURST - ~BLAST not asserted
-// NO BURST - ~BLAST asserted
-// NEW REQUEST - ~AS asserted
-// NO REQUEST - ~AS not asserted when in
-
-// Ti -> Ti via no request
-// Ti -> Ta via new request
-// on enter of Ta, set address state to false
-// on enter of Td, burst is sampled
-// Ta -> Td
-// Td -> Ti after signaling ready and no burst (blast low)
-// Td -> Td after signaling ready and burst (blast high)
-// Ti -> TChecksumFailure if FAIL is asserted
-// NOTE: Tw may turn out to be synthetic
 
 void loop() {
     doInvocationBody();
@@ -575,26 +541,9 @@ signalHaltState(const std::string& haltMsg) noexcept {
     signalHaltState(haltMsg.c_str());
 }
 #endif
-BodyFunction getNonDebugBody(byte index) noexcept {
-    return lookupTable[index];
-}
-BodyFunction getDebugBody(byte index) noexcept {
-    if constexpr (CompileInAddressDebuggingSupport) {
-        return lookupTable_Debug[index];
-    } else {
-        return fallbackBody<true>;
-    }
-}
 
-SplitBodyFunction getSplitNonDebugBody(byte index) noexcept {
-    return lookupTableSplit[index];
-}
-SplitBodyFunction getSplitDebugBody(byte index) noexcept {
-    static constexpr SplitBodyFunction fallback(fallbackBodyRead<true>, fallbackBodyWrite<true>);
-    if constexpr (CompileInAddressDebuggingSupport) {
-        return lookupTableSplit_Debug[index];
-    } else {
-        return fallback;
-    }
+void
+setupMemoryMap() {
+
 }
 SdFat SD;
