@@ -48,16 +48,6 @@ public:
     static void setupDataLinesForWrite() noexcept;
     static void setupDataLinesForRead() noexcept;
 private:
-    template<bool inDebugMode>
-    static void updateTargetFunctions() noexcept {
-        if constexpr (auto [a, b] = getSplitBody<inDebugMode>(address_.bytes[3]); inDebugMode) {
-            lastReadDebug_ = a;
-            lastWriteDebug_ = b;
-        } else {
-            lastRead_ = a;
-            lastWrite_ = b;
-        }
-    }
     static constexpr SplitWord16 extractAddress(uint32_t value) noexcept {
         // okay first step is to get the part of the value that we actually care about
         constexpr uint32_t LowerPortion =  0b0000000000000000'0000001111111111;

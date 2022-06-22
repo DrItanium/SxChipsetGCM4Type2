@@ -83,6 +83,10 @@ public:
     [[nodiscard]] constexpr auto getBaseAddress() const noexcept { return baseAddress_; }
     [[nodiscard]] constexpr auto getEndAddress() const noexcept { return endAddress_; }
     [[nodiscard]] constexpr auto getInternalMask() const noexcept { return internalMask_; }
+
+    void handleRequest() noexcept {
+
+    }
 private:
     uint32_t numberOfPages_;
     uint32_t baseAddress_;
@@ -164,7 +168,24 @@ public:
     void emplace_back(uint32_t baseAddress, uint32_t numBlocks, Args&&... rest) noexcept {
         emplace_back(std::make_shared<T>(baseAddress, numBlocks, rest...));
     }
+    size_t
+    write(uint32_t baseAddress, uint8_t* data, size_t count) noexcept override {
+        // bypass lastMatch to make sure we always do the right thing
+        if (auto result = find(baseAddress); result) {
+            return result->write(baseAddress, data, count);
+        } else {
+            return 0;
+        }
 
+    }
+    size_t
+    read(uint32_t baseAddress, uint8_t* data, size_t count) noexcept override {
+        if (auto result = find(baseAddress); result) {
+            return result->read(baseAddress, data, count);
+        } else {
+            return 0;
+        }
+    }
 private:
     // yes mutable is gross but I have an interface to satisfy
     mutable MemorySpace::Ptr lastMatch_ = nullptr;

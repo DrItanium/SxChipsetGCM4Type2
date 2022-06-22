@@ -45,6 +45,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "RTCInterface.h"
 #include "i960SxChipset.h"
 #include "type_traits.h"
+#include "ManagementEngine.h"
 
 constexpr auto RTCBaseAddress = 0xFA00'0000;
 constexpr auto Serial0BaseAddress = 0xFB00'0000;
@@ -81,18 +82,10 @@ using L1Cache = Cache2Instance_t<TenWayRandPLRUCacheWay, 256, CacheLineSize, Bac
 L1Cache theCache;
 
 void waitForCycleUnlock() noexcept {
-    while (DigitalPin<i960Pinout::DoCycle>::isDeasserted());
+    ManagementEngine::waitForCycleUnlock();
 }
 [[nodiscard]] bool informCPU() noexcept {
-    // don't pulse READY, instead just pull it low, the interrupt latency on the 4809 is horrible
-    // so we just pull Ready high as soon as we get the next phase in.
-    //DigitalPin<i960Pinout::Ready>::pulse();
-    DigitalPin<i960Pinout::Ready>::assertPin();
-    // make sure that we just wait for the gating signal before continuing
-    while (DigitalPin<i960Pinout::InTransaction>::isAsserted() && DigitalPin<i960Pinout::BurstNext>::isDeasserted());
-    bool outcome = DigitalPin<i960Pinout::InTransaction>::isDeasserted();
-    DigitalPin<i960Pinout::Ready>::deassertPin();
-    return outcome;
+    return ManagementEngine::informCPU();
 }
 constexpr auto IncrementAddress = true;
 constexpr auto LeaveAddressAlone = false;
