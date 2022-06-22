@@ -44,7 +44,9 @@ public:
     [[nodiscard]] static LoadStoreStyle getStyle() noexcept;
     [[nodiscard]] static bool isReadOperation() noexcept;
     template<byte offsetMask>
-    [[nodiscard]] static auto getCacheOffsetEntry() noexcept { return (address_.bytes[0] >> 1) & offsetMask; }
+    [[nodiscard]] static auto getCacheOffsetEntry() noexcept { return getCacheOffsetEntry<offsetMask>(address_); }
+    template<byte offsetMask>
+    [[nodiscard]] static auto getCacheOffsetEntry(SplitWord32 word) noexcept { return (word.bytes[0] >> 1) & offsetMask; }
     static void setupDataLinesForWrite() noexcept;
     static void setupDataLinesForRead() noexcept;
 private:
