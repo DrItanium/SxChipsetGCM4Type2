@@ -46,4 +46,10 @@ namespace ManagementEngine
         DigitalPin<i960Pinout::Ready>::deassertPin();
         return outcome;
     }
+    void waitForBootSignal() noexcept {
+        while (DigitalPin<i960Pinout::SuccessfulBoot>::read() == LOW);
+        attachInterrupt(i960Pinout::SuccessfulBoot,
+                        []() { signalHaltState("CHECKSUM FAILURE"); },
+                        FALLING);
+    }
 }

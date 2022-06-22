@@ -173,12 +173,6 @@ void installBootImage() noexcept {
 }
 
 
-void waitForBootSignal() noexcept {
-    while (DigitalPin<i960Pinout::SuccessfulBoot>::read() == LOW);
-    attachInterrupt(i960Pinout::SuccessfulBoot,
-                    []() { signalHaltState("CHECKSUM FAILURE"); },
-                    FALLING);
-}
 // the setup routine runs once when you press reset:
 constexpr auto TestReadyPinSignal = false;
 void setupMemoryMap();
@@ -276,7 +270,7 @@ void setup() {
     DigitalPin<i960Pinout::Reset960>::assertPin();
 
     ProcessorInterface::setupDataLinesForRead();
-    waitForBootSignal();
+    ManagementEngine::waitForBootSignal();
 }
 
 void loop() {

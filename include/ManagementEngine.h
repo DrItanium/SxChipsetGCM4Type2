@@ -31,5 +31,6 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 namespace ManagementEngine {
     void waitForCycleUnlock() noexcept;
     [[nodiscard]] bool informCPU() noexcept;
+    void waitForBootSignal() noexcept;
 }
 #endif //SXCHIPSETGCM4TYPE2_MANAGEMENTENGINE_H
