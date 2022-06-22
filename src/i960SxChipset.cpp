@@ -73,104 +73,11 @@ template<TargetMCU mcu> struct BackingMemoryStorage final { using Type = Fallbac
 using BackingMemoryStorage_t = BackingMemoryStorage<TargetBoard::getMCUTarget()>::Type;
 constexpr auto CacheLineSize = TargetBoard::getCacheLineSizeInBits();
 constexpr auto CacheSize = TargetBoard::getCacheSize();
+using SystemRam_t = RAM<BackingMemoryStorage_t>;
+CompleteMemorySpace fullSpace;
+SystemRam_t theRAM;
+CoreChipsetFeatures configurationSpace;
 
-//using L1Cache = CacheInstance_t<EightWayRandPLRUCacheSet, CacheSize, CacheLineSize, BackingMemoryStorage_t, CompileInCacheSystemDebuggingSupport>;
-//using L1Cache = CacheInstance_t<SixteenWayRandPLRUCacheWay, CacheSize, CacheLineSize, BackingMemoryStorage_t, CompileInCacheSystemDebuggingSupport>;
-//using L1Cache = Cache2Instance_t<FourteenWayRandPLRUCacheWay, 128, CacheLineSize, BackingMemoryStorage_t, CompileInAddressDebuggingSupport>;
-using L1Cache = Cache2Instance_t<TenWayRandPLRUCacheWay, 256, CacheLineSize, BackingMemoryStorage_t, CompileInAddressDebuggingSupport>;
-
-//L1Cache theCache;
-
-void waitForCycleUnlock() noexcept {
-    ManagementEngine::waitForCycleUnlock();
-}
-[[nodiscard]] bool informCPU() noexcept {
-    return ManagementEngine::informCPU();
-}
-constexpr auto IncrementAddress = true;
-constexpr auto LeaveAddressAlone = false;
-// while the i960 does not allow going beyond 8 words, we can use the number of words cached in all cases to be safe
-void displayRequestedAddress() noexcept {
-    auto address = ProcessorInterface::getAddress();
-    Serial.print(F("ADDRESS: 0x"));
-    Serial.println(address, HEX);
-}
-template<bool inDebugMode, typename T>
-void handleExternalDeviceRequestRead() noexcept {
-    if constexpr (inDebugMode) {
-        displayRequestedAddress();
-    }
-    for(;;) {
-        waitForCycleUnlock();
-        if constexpr (inDebugMode && TargetBoard::compileInExtendedDebugInformation()) {
-            auto result = T::read(ProcessorInterface::getPageIndex(),
-                                  ProcessorInterface::getPageOffset(),
-                                  ProcessorInterface::getStyle());
-            Serial.print(F("\tPage Index: 0x")) ;
-            Serial.println(ProcessorInterface::getPageIndex(), HEX);
-            Serial.print(F("\tPage Offset: 0x")) ;
-            Serial.println(ProcessorInterface::getPageOffset(), HEX);
-            Serial.print(F("\tRead Value: 0x"));
-            Serial.println(result, HEX);
-            ProcessorInterface::setDataBits(result);
-        } else {
-            ProcessorInterface::setDataBits(
-                    T::read(ProcessorInterface::getPageIndex(),
-                            ProcessorInterface::getPageOffset(),
-                            ProcessorInterface::getStyle()));
-
-        }
-        if (informCPU()) {
-            break;
-        }
-        ProcessorInterface::burstNext<IncrementAddress>();
-    }
-}
-template<bool inDebugMode, typename T>
-void handleExternalDeviceRequestWrite() noexcept {
-    if constexpr (inDebugMode) {
-        displayRequestedAddress();
-    }
-    for (;;) {
-        waitForCycleUnlock();
-        if constexpr (inDebugMode && CompileInExtendedDebugInformation) {
-            auto dataBits = ProcessorInterface::getDataBits();
-            Serial.print(F("\tPage Index: 0x")) ;
-            Serial.println(ProcessorInterface::getPageIndex(), HEX);
-            Serial.print(F("\tPage Offset: 0x")) ;
-            Serial.println(ProcessorInterface::getPageOffset(), HEX);
-            Serial.print(F("\tData To Write: 0x"));
-            Serial.println(dataBits.getWholeValue(), HEX);
-            T::write(ProcessorInterface::getPageIndex(),
-                     ProcessorInterface::getPageOffset(),
-                     ProcessorInterface::getStyle(),
-                     dataBits);
-        } else {
-            T::write(ProcessorInterface::getPageIndex(),
-                     ProcessorInterface::getPageOffset(),
-                     ProcessorInterface::getStyle(),
-                     ProcessorInterface::getDataBits());
-        }
-        if (informCPU()) {
-            break;
-        }
-        // be careful of querying i960 state at this point because the chipset runs at twice the frequency of the i960
-        // so you may still be reading the previous i960 cycle state!
-        ProcessorInterface::burstNext<IncrementAddress>();
-    }
-}
-template<bool inDebugMode, typename T>
-void handleExternalDeviceRequest() noexcept {
-    // with burst transactions in the core chipset, we do not have access to a cache line to write into.
-    // instead we need to do the old style infinite iteration design
-    if (ProcessorInterface::isReadOperation()) {
-        ProcessorInterface::setupDataLinesForRead();
-        handleExternalDeviceRequestRead<inDebugMode, T>();
-    } else {
-        ProcessorInterface::setupDataLinesForWrite();
-        handleExternalDeviceRequestWrite<inDebugMode, T>();
-    }
-}
 template<bool inDebugMode>
 void invocationBody() noexcept {
     // wait for the management engine to give the go ahead
@@ -194,9 +101,6 @@ void doInvocationBody() noexcept {
         invocationBody<false>();
     }
 }
-using SystemRam_t = RAM<BackingMemoryStorage_t>;
-SystemRam_t theRAM;
-CoreChipsetFeatures configurationSpace;
 
 void installBootImage() noexcept {
 
@@ -397,24 +301,25 @@ signalHaltState(const char* haltMsg) noexcept {
         delay(1000);
     }
 }
-#ifdef __arm__
 [[noreturn]]
 void
 signalHaltState(const std::string& haltMsg) noexcept {
     signalHaltState(haltMsg.c_str());
 }
-#endif
-CompleteMemorySpace fullSpace;
-MemorySpace::ObserverPtr space;
 void
 setupMemoryMap() {
-    space = std::experimental::make_observer(&fullSpace);
     fullSpace.emplace_back(configurationSpace);
     fullSpace.emplace_back(theRAM);
     /// @todo implement
 }
 MemorySpace::ObserverPtr
 getMemory() noexcept {
+    static MemorySpace::ObserverPtr space;
+    static bool initialized = false;
+    if (!initialized) {
+        initialized = true;
+        space = std::experimental::make_observer(&fullSpace);
+    }
     return space;
 }
 SdFat SD;
