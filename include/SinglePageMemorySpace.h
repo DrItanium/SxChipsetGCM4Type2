@@ -61,14 +61,6 @@ public:
     read(uint32_t address, LoadStoreStyle lss) const noexcept override {
         return operator[](static_cast<uint8_t>(address >> 1)).wholeValue_;
     }
-    uint32_t write(uint32_t baseAddress, uint8_t *data, uint32_t count) noexcept override {
-        /// @todo implement
-        return 0;
-    }
-    uint32_t read(uint32_t baseAddress, uint8_t *data, uint32_t count) noexcept override {
-        /// @todo implement
-        return 0;
-    }
 private:
     SplitWord16 entries_[128];
 };

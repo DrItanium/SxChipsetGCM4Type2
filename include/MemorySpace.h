@@ -80,8 +80,6 @@ public:
         return address >= baseAddress_ && address < endAddress_;
     }
 
-    virtual uint32_t write(uint32_t baseAddress, uint8_t* data, uint32_t count) noexcept = 0;
-    virtual uint32_t read(uint32_t baseAddress, uint8_t* data, uint32_t count) noexcept = 0;
     [[nodiscard]] constexpr auto getNumberOfPages() const noexcept { return numberOfPages_; }
     [[nodiscard]] constexpr auto getBaseAddress() const noexcept { return baseAddress_; }
     [[nodiscard]] constexpr auto getEndAddress() const noexcept { return endAddress_; }
@@ -171,25 +169,6 @@ public:
     void emplace_back(MemorySpace::ObserverPtr targetPtr) noexcept { subSpaces_.emplace_back(targetPtr); }
     template<typename T>
     void emplace_back(T& targetPtr) noexcept { emplace_back(std::experimental::make_observer(&targetPtr)); }
-
-    uint32_t
-    write(uint32_t baseAddress, uint8_t* data, uint32_t count) noexcept override {
-        // bypass lastMatch to make sure we always do the right thing
-        if (auto result = find(baseAddress); result) {
-            return result->write(baseAddress, data, count);
-        } else {
-            return 0;
-        }
-
-    }
-    uint32_t
-    read(uint32_t baseAddress, uint8_t* data, uint32_t count) noexcept override {
-        if (auto result = find(baseAddress); result) {
-            return result->read(baseAddress, data, count);
-        } else {
-            return 0;
-        }
-    }
     void handleReadRequest() noexcept override;
     void handleWriteRequest() noexcept override;
 private:
