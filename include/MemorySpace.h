@@ -47,13 +47,13 @@ public:
      * @param numPages The number of 256-byte pages consumed by this memory space (at least 1)
      */
     MemorySpace(uint32_t baseAddress, uint32_t numPages) :
-    numberOfPages_(correctPageCount(numPages)),
     baseAddress_(fixBaseAddress(baseAddress)),
-    endAddress_(baseAddress_ + (numberOfPages_ << 8)),
-    internalMask_(endAddress_ - 1)
+    endAddress_(baseAddress_ + (correctPageCount(numPages) << 8))
     {
 
     }
+    struct TreatAsAbsoluteAddress { };
+    struct TreatAsRelativeAddress { };
     virtual ~MemorySpace() = default;
     /**
      * @brief Write a given value to memory
@@ -61,16 +61,25 @@ public:
      * @param value The value to write
      * @param lss The size of the value
      */
-    virtual void write(uint32_t address, SplitWord16 value, LoadStoreStyle lss) noexcept { }
-    void write(uint32_t address, uint16_t value, LoadStoreStyle style) noexcept { write(address, SplitWord16(value), style); }
+    inline void write(uint32_t address, SplitWord16 value, LoadStoreStyle lss, TreatAsAbsoluteAddress) noexcept {
+        write(makeAddressRelative(address), value, lss, TreatAsRelativeAddress{});
+    }
+    virtual void write(uint32_t address, SplitWord16 value, LoadStoreStyle lss, TreatAsRelativeAddress) noexcept {
+        // always operate on relative addresses
+    }
+    void write(uint32_t address, uint16_t value, LoadStoreStyle style) noexcept { write(address, SplitWord16(value), style, TreatAsAbsoluteAddress{}); }
     /**
      * @brief Read a 16-bit value from this space relative to the base address
      * @param address The address that we want to read from relative to this space's base address
      * @param lss The size of the value to read
      * @return The 16-bit value
      */
-    [[nodiscard]] virtual uint16_t read(uint32_t address, LoadStoreStyle lss) const noexcept { return 0; }
+    [[nodiscard]] virtual uint16_t read(uint32_t address, LoadStoreStyle lss, TreatAsRelativeAddress) const noexcept {
+        return 0;
+    }
 
+    [[nodiscard]] inline uint16_t read(uint32_t address, LoadStoreStyle lss, TreatAsAbsoluteAddress) const noexcept { return read(makeAddressRelative(address), lss, TreatAsRelativeAddress{}); }
+    [[nodiscard]] inline uint16_t read(uint32_t address, LoadStoreStyle lss) const noexcept { return read(address, lss, TreatAsAbsoluteAddress{}); }
     /**
      * @brief Used to determine if this memory space responds to a given memory request
      * @param address The physical address to check for matching
@@ -80,18 +89,51 @@ public:
         return address >= baseAddress_ && address < endAddress_;
     }
 
-    [[nodiscard]] constexpr auto getNumberOfPages() const noexcept { return numberOfPages_; }
+    [[nodiscard]] constexpr auto getNumberOfPages() const noexcept { return (endAddress_ - baseAddress_) >> 8; }
     [[nodiscard]] constexpr auto getBaseAddress() const noexcept { return baseAddress_; }
     [[nodiscard]] constexpr auto getEndAddress() const noexcept { return endAddress_; }
-    [[nodiscard]] constexpr auto getInternalMask() const noexcept { return internalMask_; }
-
     virtual void handleReadRequest() noexcept;
     virtual void handleWriteRequest() noexcept;
+    /**
+     * @brief Convert an absolute address into one that is relative to the current memory space
+     * @param absoluteAddress The absolute address
+     * @return The address relative to the starting position
+     */
+    virtual uint32_t makeAddressRelative(uint32_t absoluteAddress) const noexcept {
+        return absoluteAddress - baseAddress_;
+    }
+    virtual uint32_t read(uint32_t address, uint16_t* value, uint32_t count) noexcept {
+        auto relativeStartAddress = makeAddressRelative(address);
+        auto relativeTotalEndAddress = makeAddressRelative(endAddress_);
+        // okay so now that we have a relative address, we need to know how many bytes to walk through
+        auto relativeEndAddress = relativeStartAddress + count;
+        if (relativeTotalEndAddress < relativeEndAddress) {
+            relativeEndAddress = relativeTotalEndAddress;
+        }
+        uint32_t numRead = 0;
+        for (auto i = relativeStartAddress; i < relativeEndAddress; i+=sizeof(uint16_t), ++numRead, ++value) {
+            *value = read(i, LoadStoreStyle::Full16, TreatAsRelativeAddress{});
+        }
+        return numRead;
+    }
+    virtual uint32_t write(uint32_t address, uint16_t* value, uint32_t count) noexcept {
+        auto relativeStartAddress = makeAddressRelative(address);
+        auto relativeTotalEndAddress = makeAddressRelative(endAddress_);
+        // okay so now that we have a relative address, we need to know how many bytes to walk through
+        auto relativeEndAddress = relativeStartAddress + count;
+        if (relativeTotalEndAddress < relativeEndAddress) {
+            relativeEndAddress = relativeTotalEndAddress;
+        }
+        uint32_t numWritten = 0;
+        for (auto i = relativeStartAddress; i < relativeEndAddress; i+=sizeof(uint16_t), ++numWritten, ++value) {
+            write(i, SplitWord16{*value}, LoadStoreStyle::Full16, TreatAsRelativeAddress{});
+        }
+        return numWritten;
+    }
+    /// @todo implement block read/write support
 private:
-    uint32_t numberOfPages_;
     uint32_t baseAddress_;
     uint32_t endAddress_;
-    uint32_t internalMask_;
 };
 
 /**
@@ -106,18 +148,18 @@ public:
     ~ContainerSpace() override = default;
 
     void
-    write(uint32_t address, SplitWord16 value, LoadStoreStyle lss) noexcept override {
+    write(uint32_t address, SplitWord16 value, LoadStoreStyle lss, TreatAsRelativeAddress) noexcept override {
         if (lastMatch_) {
-            lastMatch_->write(address, value, lss);
+            lastMatch_->write(address, value, lss, TreatAsAbsoluteAddress{});
         } else {
             if (auto result = find(address); result) {
-                result->write(address, value, lss) ;
+                result->write(address, value, lss, TreatAsAbsoluteAddress{}) ;
                 lastMatch_ = result;
             }
         }
     }
     uint16_t
-    read(uint32_t address, LoadStoreStyle lss) const noexcept override {
+    read(uint32_t address, LoadStoreStyle lss, TreatAsRelativeAddress) const noexcept override {
         // at this point we need to use lastMatch_ as a matching criteria
         // generally, if we are at this point then we found a successful match!
         if (lastMatch_) {

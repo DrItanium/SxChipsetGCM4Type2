@@ -124,14 +124,6 @@ public:
             default: break;
         }
     }
-    uint32_t
-    write(uint32_t baseAddress, uint8_t *data, uint32_t count) noexcept override {
-        return 0;
-    }
-    uint32_t
-    read(uint32_t baseAddress, uint8_t *data, uint32_t count) noexcept override {
-        return 0;
-    }
 private:
     SplitWord32 value_ {0};
 };
