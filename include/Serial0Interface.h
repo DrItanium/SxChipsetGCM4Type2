@@ -29,17 +29,10 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #ifndef SXCHIPSET_SERIAL0INTERFACE_H
 #define SXCHIPSET_SERIAL0INTERFACE_H
 #include <Arduino.h>
-template<Address baseAddress, bool addressDebuggingAllowed, bool defaultAddressDebuggingModeTo = false>
-class Serial0Interface {
+#include "MemorySpace.h"
+//template<Address baseAddress, bool addressDebuggingAllowed, bool defaultAddressDebuggingModeTo = false>
+class Serial0Interface : public MemorySpace {
 public:
-    static constexpr auto StartAddress = baseAddress;
-    static constexpr SplitWord32 StartAddressSplit { StartAddress };
-    static constexpr auto StartPage = StartAddressSplit.getTargetPage();
-    static constexpr auto EndAddress = StartAddress + 0x100;
-    static constexpr SplitWord32 EndAddressSplit{EndAddress};
-    static constexpr auto EndPage = EndAddressSplit.getTargetPage();
-    static constexpr auto SectionID = StartAddressSplit.getMostSignificantByte();
-    static constexpr auto AddressDebuggingAllowed = addressDebuggingAllowed;
     enum class Registers : uint8_t {
 #define TwoByteEntry(Prefix) Prefix ## 0, Prefix ## 1
 #define FourByteEntry(Prefix) \
@@ -63,8 +56,8 @@ public:
         //TwoByteEntry(CacheLineCount),
         //TwoByteEntry(CacheLineSize),
         //TwoByteEntry(NumberOfCacheWays),
-        TwoByteEntry(TriggerInterrupt),
-        FourByteEntry(AddressDebuggingFlag),
+        //TwoByteEntry(TriggerInterrupt),
+        //FourByteEntry(AddressDebuggingFlag),
 #undef SixteenByteEntry
 #undef TwelveByteEntry
 #undef EightByteEntry
@@ -73,21 +66,18 @@ public:
         End,
         ConsoleIO = ConsoleIO0,
         ConsoleFlush = ConsoleFlush0,
-        TriggerInterrupt = TriggerInterrupt0,
-        AddressDebuggingFlag = AddressDebuggingFlag00,
+        //TriggerInterrupt = TriggerInterrupt0,
+        //AddressDebuggingFlag = AddressDebuggingFlag00,
         // we ignore the upper half of the register but reserve it to make sure
     };
-    static_assert(static_cast<int>(Registers::End) < 0x100);
+    using Self = Serial0Interface;
+    using Parent = MemorySpace;
 public:
-    Serial0Interface() = delete;
-    ~Serial0Interface() = delete;
-    Serial0Interface(const Serial0Interface&) = delete;
-    Serial0Interface(Serial0Interface&&) = delete;
-    Serial0Interface& operator=(const Serial0Interface&) = delete;
-    Serial0Interface& operator=(Serial0Interface&&) = delete;
+    Serial0Interface(uint32_t baseAddress) : Parent(baseAddress, 1) { }
+    ~Serial0Interface() override = default;
 private:
     template<unsigned int usecDelay = 100, unsigned long cooloffThreshold = 128>
-    static inline uint16_t getConsoleInput() noexcept {
+    uint16_t getConsoleInput() const noexcept {
         static volatile unsigned long numEmptyReads = 0;
         auto result = Serial.read();
         if (result == -1) {
@@ -108,7 +98,7 @@ private:
         return result;
     }
     template<unsigned int usecDelay = 100>
-    static inline void sendToConsole(char value) noexcept {
+    void sendToConsole(char value) noexcept {
         // The serial console is very fast and seems to be out pacing the i960 and the rest of the bus.
         // So introduce this delay after writing to make sure we don't run into problems in the future.
         Serial.write(value);
@@ -116,54 +106,33 @@ private:
             delayMicroseconds(usecDelay);
         }
     }
-    static inline uint16_t handleFirstPageRegisterReads(uint8_t offset, LoadStoreStyle) noexcept {
-        switch (static_cast<Registers>(offset)) {
-            case Registers::ConsoleIO:
-                return getConsoleInput();
-            case Registers::AddressDebuggingFlag:
-                if constexpr (AddressDebuggingAllowed) {
-                    return static_cast<uint16_t>(enableAddressDebugging_);
-                }
-            default:
-                return 0;
-        }
-    }
-    static inline void handleFirstPageRegisterWrites(uint8_t offset, LoadStoreStyle, SplitWord16 value) noexcept {
-        switch (static_cast<Registers>(offset)) {
-            case Registers::TriggerInterrupt:
-                // do nothing here
-                break;
-            case Registers::ConsoleFlush:
-                Serial.flush();
-                break;
-            case Registers::ConsoleIO:
-                sendToConsole(static_cast<char>(value.getWholeValue()));
-                break;
-            case Registers::AddressDebuggingFlag:
-                if constexpr (AddressDebuggingAllowed) {
-                    enableAddressDebugging_ = (value.getWholeValue() != 0);
-                }
-                break;
-            default:
-                break;
-        }
-    }
 public:
-    static void begin() noexcept {
-        // this is done ahead of time
-        Serial.println(F("CONSOLE UP!"));
+    [[nodiscard]]
+    uint16_t
+    read(uint32_t address, LoadStoreStyle ) const noexcept override {
+        switch (static_cast<uint8_t>(address)) {
+            case 0: return getConsoleInput();
+            default: return 0;
+        }
     }
 
-    static inline uint16_t read(uint8_t, uint8_t offset, LoadStoreStyle lss) noexcept {
-        return handleFirstPageRegisterReads(offset, lss);
+    void
+    write(uint32_t address, SplitWord16 value, LoadStoreStyle) noexcept {
+        switch (static_cast<uint8_t>(address)) {
+            case 0: sendToConsole(static_cast<char>(value.getWholeValue())); break;
+            case 2: Serial.flush(); break;
+            default: break;
+        }
     }
-
-    static inline void write(uint8_t, uint8_t offset, LoadStoreStyle lss, SplitWord16 value) noexcept {
-        handleFirstPageRegisterWrites(offset, lss, value);
+    uint32_t
+    write(uint32_t baseAddress, uint8_t *data, uint32_t count) noexcept override {
+        return 0;
     }
-    static bool addressDebuggingEnabled() noexcept { return AddressDebuggingAllowed && enableAddressDebugging_; }
+    uint32_t
+    read(uint32_t baseAddress, uint8_t *data, uint32_t count) noexcept override {
+        return 0;
+    }
 private:
-    // 257th char is always zero and not accessible, prevent crap from going beyond the cache
-    static inline bool enableAddressDebugging_ = defaultAddressDebuggingModeTo;
+    SplitWord32 value_ {0};
 };
 #endif //SXCHIPSET_SERIAL0INTERFACE_H

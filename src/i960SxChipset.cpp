@@ -62,7 +62,8 @@ constexpr auto ValidateTransferDuringInstall = TargetBoard::validateTransferDuri
 constexpr auto UseIOExpanderAddressLineInterrupts = TargetBoard::useIOExpanderAddressLineInterrupts();
 //using TheDisplayInterface = DisplayInterface<DisplayBaseAddress>;
 using TheSDInterface = SDCardInterface<MaximumNumberOfOpenFiles, SDBaseAddress>;
-using TheConsoleInterface = Serial0Interface<Serial0BaseAddress, CompileInAddressDebuggingSupport, AddressDebuggingEnabledOnStartup>;
+//using TheConsoleInterface = Serial0Interface<Serial0BaseAddress, CompileInAddressDebuggingSupport, AddressDebuggingEnabledOnStartup>;
+using UART0Interface = Serial0Interface;
 using TheRTCInterface = RTCInterface<RTCBaseAddress>;
 using ConfigurationSpace = CoreChipsetFeatures;
 // define the backing memory storage classes via template specialization
@@ -77,6 +78,7 @@ using SystemRam_t = RAM<BackingMemoryStorage_t>;
 CompleteMemorySpace fullSpace;
 SystemRam_t theRAM;
 CoreChipsetFeatures configurationSpace;
+UART0Interface uart0{0xFFFE'FF00};
 
 template<bool inDebugMode>
 void invocationBody() noexcept {
@@ -91,15 +93,7 @@ void invocationBody() noexcept {
     ProcessorInterface::newDataCycle<inDebugMode>();
 }
 void doInvocationBody() noexcept {
-    if constexpr (TargetBoard::compileInAddressDebuggingSupport()) {
-        if (TheConsoleInterface::addressDebuggingEnabled())  {
-            invocationBody<true>();
-        } else {
-            invocationBody<false>();
-        }
-    } else {
-        invocationBody<false>();
-    }
+    invocationBody<false>();
 }
 
 void installBootImage() noexcept {
