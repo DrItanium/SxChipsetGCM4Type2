@@ -293,8 +293,11 @@ signalHaltState(const std::string& haltMsg) noexcept {
 }
 void
 setupMemoryMap() {
-    fullSpace.emplace_back(configurationSpace);
     fullSpace.emplace_back(theRAM);
+    fullSpace.emplace_back(configurationSpace);
+    fullSpace.emplace_back(uart0);
+    configurationSpace.setAddress(0, 0, uart0.getBaseAddress(), 0x8000'0000);
+    //configurationSpace.setAddress(0, 1, )
     /// @todo implement
 }
 MemorySpace::ObserverPtr
