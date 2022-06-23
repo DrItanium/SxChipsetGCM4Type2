@@ -102,34 +102,8 @@ public:
     virtual uint32_t makeAddressRelative(uint32_t absoluteAddress) const noexcept {
         return absoluteAddress - baseAddress_;
     }
-    virtual uint32_t read(uint32_t address, uint16_t* value, uint32_t count) noexcept {
-        auto relativeStartAddress = makeAddressRelative(address);
-        auto relativeTotalEndAddress = makeAddressRelative(endAddress_);
-        // okay so now that we have a relative address, we need to know how many bytes to walk through
-        auto relativeEndAddress = relativeStartAddress + count;
-        if (relativeTotalEndAddress < relativeEndAddress) {
-            relativeEndAddress = relativeTotalEndAddress;
-        }
-        uint32_t numRead = 0;
-        for (auto i = relativeStartAddress; i < relativeEndAddress; i+=sizeof(uint16_t), ++numRead, ++value) {
-            *value = read(i, LoadStoreStyle::Full16, TreatAsRelativeAddress{});
-        }
-        return numRead;
-    }
-    virtual uint32_t write(uint32_t address, uint16_t* value, uint32_t count) noexcept {
-        auto relativeStartAddress = makeAddressRelative(address);
-        auto relativeTotalEndAddress = makeAddressRelative(endAddress_);
-        // okay so now that we have a relative address, we need to know how many bytes to walk through
-        auto relativeEndAddress = relativeStartAddress + count;
-        if (relativeTotalEndAddress < relativeEndAddress) {
-            relativeEndAddress = relativeTotalEndAddress;
-        }
-        uint32_t numWritten = 0;
-        for (auto i = relativeStartAddress; i < relativeEndAddress; i+=sizeof(uint16_t), ++numWritten, ++value) {
-            write(i, SplitWord16{*value}, LoadStoreStyle::Full16, TreatAsRelativeAddress{});
-        }
-        return numWritten;
-    }
+    virtual uint32_t read(uint32_t address, uint16_t* value, uint32_t count) noexcept;
+    virtual uint32_t write(uint32_t address, uint16_t* value, uint32_t count) noexcept;
     /// @todo implement block read/write support
 private:
     uint32_t baseAddress_;
@@ -149,31 +123,23 @@ public:
 
     void
     write(uint32_t address, SplitWord16 value, LoadStoreStyle lss, TreatAsRelativeAddress) noexcept override {
-        if (lastMatch_) {
-            lastMatch_->write(address, value, lss, TreatAsAbsoluteAddress{});
-        } else {
-            if (auto result = find(address); result) {
-                result->write(address, value, lss, TreatAsAbsoluteAddress{}) ;
-                lastMatch_ = result;
-            }
+        if (auto result = find(address); result) {
+            // the address is a relative address according to this memory space, but to children it is an absolute address
+            result->write(address, value, lss, TreatAsAbsoluteAddress{}) ;
         }
     }
     uint16_t
     read(uint32_t address, LoadStoreStyle lss, TreatAsRelativeAddress) const noexcept override {
-        // at this point we need to use lastMatch_ as a matching criteria
         // generally, if we are at this point then we found a successful match!
-        if (lastMatch_) {
-            return lastMatch_->read(address, lss);
+        if (auto result = find(address); result) {
+            // the address is relative to the parent but is an absolute address inside this memory space according to its children
+            return result->read(address, lss, TreatAsAbsoluteAddress{});
         } else {
-            if (auto result = find(address); result) {
-                lastMatch_ = result;
-                return lastMatch_->read(address, lss) ;
-            } else {
-                return 0;
-            }
-
+            return 0;
         }
     }
+    uint32_t read(uint32_t address, uint16_t *value, uint32_t count) noexcept override;
+    uint32_t write(uint32_t address, uint16_t *value, uint32_t count) noexcept override;
 protected:
     MemorySpace::ObserverPtr
     find(uint32_t address) const noexcept {
@@ -184,38 +150,15 @@ protected:
         }
         return nullptr;
     }
-    bool
-    updateLastMatch(uint32_t address) const noexcept {
-        if (lastMatch_ && lastMatch_->respondsTo(address)) {
-            return true;
-        } else {
-            if (auto subSpace = find(address); subSpace) {
-                lastMatch_ = subSpace;
-                return true;
-            } else {
-                return false;
-            }
-        }
-    }
 public:
-    bool
-    respondsTo(uint32_t address) const noexcept override {
-        if (Parent::respondsTo(address)) {
-            return updateLastMatch(address);
-        } else {
-            return false;
-        }
-    }
     bool empty() const noexcept { return subSpaces_.empty(); }
     auto size() const noexcept { return subSpaces_.size(); }
+    /// @todo implement support for constructing child memory spaces relative to zero
     void emplace_back(MemorySpace::ObserverPtr targetPtr) noexcept { subSpaces_.emplace_back(targetPtr); }
     template<typename T>
     void emplace_back(T& targetPtr) noexcept { emplace_back(std::experimental::make_observer(&targetPtr)); }
-    void handleReadRequest() noexcept override;
-    void handleWriteRequest() noexcept override;
 private:
     // yes mutable is gross but I have an interface to satisfy
-    mutable ObserverPtr lastMatch_ = nullptr;
     std::vector<ObserverPtr> subSpaces_;
 };
 class CompleteMemorySpace : public ContainerSpace {
@@ -226,7 +169,5 @@ public:
 public:
     CompleteMemorySpace() : Parent(0, 0x00FFFFFF) { }
     bool respondsTo(uint32_t address) const noexcept override { return true; }
-    void handleReadRequest() noexcept override;
-    void handleWriteRequest() noexcept override;
 };
 #endif //SXCHIPSETGCM4TYPE2_MEMORYSPACE_H

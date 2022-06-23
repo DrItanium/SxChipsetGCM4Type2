@@ -59,33 +59,43 @@ MemorySpace::handleWriteRequest() noexcept {
     } while (true);
 }
 
-void
-ContainerSpace::handleWriteRequest() noexcept {
-   if (lastMatch_) {
-       lastMatch_->handleWriteRequest();
-   } else {
-       // do a fallback to the parent implementation because something has been done out of order
-       Parent::handleWriteRequest();
-   }
-}
-
-void
-ContainerSpace::handleReadRequest() noexcept {
-    if (lastMatch_) {
-        lastMatch_->handleReadRequest();
-    } else {
-        Parent::handleReadRequest();
+uint32_t
+MemorySpace::read(uint32_t address, uint16_t* value, uint32_t count) noexcept {
+    auto relativeStartAddress = makeAddressRelative(address);
+    auto relativeTotalEndAddress = makeAddressRelative(endAddress_);
+    // okay so now that we have a relative address, we need to know how many bytes to walk through
+    auto relativeEndAddress = relativeStartAddress + count;
+    if (relativeTotalEndAddress < relativeEndAddress) {
+        relativeEndAddress = relativeTotalEndAddress;
     }
+    uint32_t numRead = 0;
+    for (auto i = relativeStartAddress; i < relativeEndAddress; i+=sizeof(uint16_t), ++numRead, ++value) {
+        *value = read(i, LoadStoreStyle::Full16, TreatAsRelativeAddress{});
+    }
+    return numRead;
 }
-
-void
-CompleteMemorySpace::handleReadRequest() noexcept {
-    (void)updateLastMatch(ProcessorInterface::getAddress());
-    Parent::handleReadRequest();
+uint32_t
+MemorySpace::write(uint32_t address, uint16_t* value, uint32_t count) noexcept {
+    auto relativeStartAddress = makeAddressRelative(address);
+    auto relativeTotalEndAddress = makeAddressRelative(endAddress_);
+    // okay so now that we have a relative address, we need to know how many bytes to walk through
+    auto relativeEndAddress = relativeStartAddress + count;
+    if (relativeTotalEndAddress < relativeEndAddress) {
+        relativeEndAddress = relativeTotalEndAddress;
+    }
+    uint32_t numWritten = 0;
+    for (auto i = relativeStartAddress; i < relativeEndAddress; i+=sizeof(uint16_t), ++numWritten, ++value) {
+        write(i, SplitWord16{*value}, LoadStoreStyle::Full16, TreatAsRelativeAddress{});
+    }
+    return numWritten;
 }
-
-void
-CompleteMemorySpace::handleWriteRequest() noexcept {
-    (void)updateLastMatch(ProcessorInterface::getAddress());
-    Parent::handleWriteRequest();
+uint32_t
+ContainerSpace::read(uint32_t address, uint16_t *value, uint32_t count) noexcept {
+    /// @todo reimplement so that we can support spanning multiple sub memory spaces
+    auto relativeBaseAddress =
+    return MemorySpace::read(address, value, count);
+}
+uint32_t
+ContainerSpace::write(uint32_t address, uint16_t *value, uint32_t count) noexcept {
+    return MemorySpace::write(address, value, count);
 }
