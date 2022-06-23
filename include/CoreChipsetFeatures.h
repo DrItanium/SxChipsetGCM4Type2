@@ -41,11 +41,31 @@ public:
 public:
     CoreChipsetFeatures() : Parent(0xFFFF'0000, 32) { }
     ~CoreChipsetFeatures() override = default;
+    constexpr auto numPopulated() const noexcept { return numberOfItems_;  }
+    constexpr auto maxSize() const noexcept { return 1024; }
+    constexpr auto empty() const noexcept { return numberOfItems_ == 0; }
+    constexpr auto full() const noexcept { return numberOfItems_ == maxSize(); }
+private:
     void
-    setAddress(uint8_t page, uint8_t offset, uint32_t address, uint32_t flags) {
+    addDevice(uint8_t page, uint8_t offset, uint32_t address, uint32_t flags) {
         auto targetPage = page & 0b11111;
         auto targetOffset = offset & 0b11111;
         entries_[targetPage][targetOffset] = ConfigurationEntry{address, flags};
+    }
+public:
+    const auto& getConfigurationDevice(uint16_t deviceId) const noexcept { return entries_[(deviceId >> 5) & 0b11111][deviceId & 0b11111]; }
+    auto& getConfigurationDevice(uint16_t deviceId) noexcept { return entries_[(deviceId >> 5) & 0b11111][deviceId & 0b11111]; }
+    bool
+    addDevice(const MemorySpace& ptr, uint32_t flags = 0) noexcept {
+        if (!full()) {
+            auto& configDevice = getConfigurationDevice(numberOfItems_);
+            ++numberOfItems_;
+            configDevice.baseAddress_ = ptr.getBaseAddress();
+            configDevice.flags_ = 0x8000'0000 | flags;
+            return true;
+        } else {
+            return false;
+        }
     }
 
 private:
@@ -121,5 +141,6 @@ private:
      */
     ConfigurationEntry entries_[32][32];
     static_assert(sizeof(entries_) == 256*32, "Entry block must be 256 bytes * 32 pages in size!");
+    uint16_t numberOfItems_ = 0;
 };
 #endif //I960SXCHIPSET_CORECHIPSETFEATURES_H
