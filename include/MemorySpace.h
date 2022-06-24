@@ -68,6 +68,7 @@ public:
     virtual uint32_t read(uint32_t address, uint16_t* value, uint32_t count) noexcept = 0;
     virtual uint32_t write(uint32_t address, uint16_t* value, uint32_t count) noexcept = 0;
     virtual uint32_t getBaseAddress() const noexcept { return 0; }
+    virtual uint32_t getEndAddress() const noexcept = 0;
 };
 /**
  * @brief Abstract representation of a memory space that can be accessed in a generic fashion; It has a base address (256-byte aligned) and consumes 1 or more pages!
@@ -116,7 +117,7 @@ public:
     }
 
     [[nodiscard]] constexpr auto getNumberOfPages() const noexcept { return endAddress_ >> 8; }
-    [[nodiscard]] constexpr auto getEndAddress() const noexcept { return endAddress_; }
+    [[nodiscard]] uint32_t getEndAddress() const noexcept override { return endAddress_; }
     uint32_t read(uint32_t address, uint16_t* value, uint32_t count) noexcept override;
     uint32_t write(uint32_t address, uint16_t* value, uint32_t count) noexcept override;
 private:
@@ -138,6 +139,7 @@ public:
     uint32_t read(uint32_t address, uint16_t *value, uint32_t count) noexcept override;
     uint32_t write(uint32_t address, uint16_t *value, uint32_t count) noexcept override;
     uint32_t getBaseAddress() const noexcept override { return baseAddress_; }
+    uint32_t getEndAddress() const noexcept override { return getBaseAddress() + ptr_.getEndAddress(); }
 private:
     [[nodiscard]] constexpr uint32_t makeAddressRelative(uint32_t absoluteAddress) const noexcept { return absoluteAddress - baseAddress_; }
 private:
@@ -175,9 +177,23 @@ public:
     using Ptr = std::shared_ptr<Self>;
 public:
     [[nodiscard]] bool respondsTo(uint32_t address) const noexcept override { return true; }
+    [[nodiscard]] uint32_t getEndAddress() const noexcept override { return 0xFFFF'FFFF; }
 };
 
+/**
+ * @brief Map the given memory space to the target base address
+ * @param baseAddress The address to base the memory space at
+ * @param space The space to be mapped
+ * @return A memory mapped memory space that wraps the provided space
+ */
 MappedMemorySpace::Ptr map(uint32_t baseAddress, MemorySpace& space) noexcept;
+/**
+ * @brief Map the given memory space immediately following another memory space (generally the previous space should be mapped)
+ * @param previousSpace The previous space that this new space will follow
+ * @param space The space to map immediately following the previous space
+ * @return A mapped memory space that follows the previous memory space
+ */
+MappedMemorySpace::Ptr map(const MemorySpace::Ptr& previousSpace, MemorySpace& space) noexcept;
 
 
 #endif //SXCHIPSETGCM4TYPE2_MEMORYSPACE_H

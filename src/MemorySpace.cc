@@ -197,3 +197,8 @@ MappedMemorySpace::Ptr
 map(uint32_t baseAddress, MemorySpace& space) noexcept {
     return std::make_shared<MappedMemorySpace>(baseAddress, space);
 }
+
+MappedMemorySpace::Ptr
+map(const MemorySpace::Ptr& previousSpace, MemorySpace& space) noexcept {
+    return map(previousSpace->getEndAddress(), space);
+}

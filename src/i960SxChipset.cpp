@@ -293,18 +293,22 @@ void
 signalHaltState(const std::string& haltMsg) noexcept {
     signalHaltState(haltMsg.c_str());
 }
+
 void
 setupMemoryMap() {
-#if 0
-    fullSpace.emplace_back(theRAM);
-    fullSpace.emplace_back(configurationSpace);
-    fullSpace.emplace_back(uart0);
-#endif
-    auto serial = map(0xFFFE'FF00, uart0);
-    auto configSpaceMapping = map(0xFFFF'0000, configurationSpace);
-    auto memory = map(0x0000'0000, theRAM);
+    static constexpr uint32_t mmioBaseAddress = 0xFF00'0000;
+    static constexpr uint32_t chipsetDevicesStart = mmioBaseAddress + 0xF0'0000;
+    static constexpr uint32_t ramStart = 0x0000'0000;
+    auto memory = map(ramStart, theRAM);
+    /// @todo define more items here
+    auto serial = map(chipsetDevicesStart + 0xE'FF00, uart0);
+    static_assert((0xFFFE'FF00 + (1 << 8)) == 0xFFFF'0000);
+    auto configSpaceMapping = map(chipsetDevicesStart + 0xF'0000, configurationSpace);
     configurationSpace.addDevice(serial);
-    /// @todo implement
+    fullSpace.emplace_back(memory);
+    fullSpace.emplace_back(configSpaceMapping);
+    fullSpace.emplace_back(serial);
+    /// @todo add more items to full space here
 }
 MemorySpace&
 getMemory() noexcept {
