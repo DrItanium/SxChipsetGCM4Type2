@@ -61,8 +61,8 @@ public:
      * @return a boolean value signifying if this memory space responds to the given address or not
      */
     virtual bool respondsTo(uint32_t address) const noexcept = 0;
-    virtual void handleReadRequest(uint32_t baseAddress) noexcept = 0;
-    virtual void handleWriteRequest(uint32_t baseAddress) noexcept = 0;
+    virtual void handleReadRequest(uint32_t baseAddress) noexcept;
+    virtual void handleWriteRequest(uint32_t baseAddress) noexcept;
     void handleReadRequest() noexcept;
     void handleWriteRequest() noexcept;
     virtual uint32_t read(uint32_t address, uint16_t* value, uint32_t count) noexcept = 0;
@@ -117,8 +117,6 @@ public:
 
     [[nodiscard]] constexpr auto getNumberOfPages() const noexcept { return endAddress_ >> 8; }
     [[nodiscard]] constexpr auto getEndAddress() const noexcept { return endAddress_; }
-    void handleReadRequest(uint32_t baseAddress) noexcept override;
-    void handleWriteRequest(uint32_t baseAddress) noexcept override;
     uint32_t read(uint32_t address, uint16_t* value, uint32_t count) noexcept override;
     uint32_t write(uint32_t address, uint16_t* value, uint32_t count) noexcept override;
 private:
@@ -180,4 +178,6 @@ public:
 };
 
 MappedMemorySpace::Ptr map(uint32_t baseAddress, MemorySpace& space) noexcept;
+
+
 #endif //SXCHIPSETGCM4TYPE2_MEMORYSPACE_H

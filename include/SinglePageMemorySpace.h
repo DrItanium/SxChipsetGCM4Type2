@@ -74,4 +74,9 @@ public:
 private:
     SplitWord16 entries_[128];
 };
+
+template<auto ... Types>
+class Foo {
+
+};
 #endif //SXCHIPSETGCM4TYPE2_SINGLEPAGEMEMORYSPACE_H

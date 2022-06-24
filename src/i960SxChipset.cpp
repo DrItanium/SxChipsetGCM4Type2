@@ -306,14 +306,8 @@ setupMemoryMap() {
     configurationSpace.addDevice(serial);
     /// @todo implement
 }
-MemorySpace::Ptr
+MemorySpace&
 getMemory() noexcept {
-    static MemorySpace::Ptr space;
-    static bool initialized = false;
-    if (!initialized) {
-        initialized = true;
-        space = std::make_shared<MemorySpace>(fullSpace);
-    }
-    return space;
+    return fullSpace;
 }
 SdFat SD;
