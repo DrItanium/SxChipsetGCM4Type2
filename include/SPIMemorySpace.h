@@ -30,16 +30,54 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #define SXCHIPSETGCM4TYPE2_SPIMEMORYSPACE_H
 #include <Arduino.h>
 #include <SPI.h>
-#include "MemorySpace.h"
+#include "SinglePageMemorySpace.h"
 
-class SPIMemorySpace : public SizedMemorySpace {
+class SPIMemorySpace : public SinglePageMemorySpace {
 public:
     using Self = SPIMemorySpace;
-    using Parent = SizedMemorySpace;
+    using Parent = SinglePageMemorySpace;
 public:
-    SPIMemorySpace() : Parent(1) { }
+    SPIMemorySpace() : Parent() { }
     ~SPIMemorySpace() override = default;
-
+private:
+    void performSPITransfer();
+public:
+    void write(uint32_t address, SplitWord16 value, LoadStoreStyle lss) noexcept override {
+        // ignore non Full16 writes!
+        if (lss != LoadStoreStyle::Full16) {
+            return;
+        }
+        switch (static_cast<uint8_t>(address)) {
+            // don't allow writes to valid
+            case 4:
+                requestPointer_.words_[0] = value;
+                break;
+            case 6:
+                requestPointer_.words_[1] = value;
+                performSPITransfer();
+                break;
+            default:
+                break;
+        }
+    }
+    uint16_t read(uint32_t address, LoadStoreStyle lss) const noexcept override {
+        switch (static_cast<uint8_t>(address)) {
+            case 0: return 0xFFFF;
+            case 2: return 0xFFFF;
+            case 4: return requestPointer_.getLowerHalf();
+            case 6: return requestPointer_.getUpperHalf();
+            case 8: return maximumSpeed_.getLowerHalf();
+            case 10: return maximumSpeed_.getUpperHalf();
+            /// @todo reimplement a proper ready flag later on
+            case 12: return 0xFFFF;
+            case 14: return 0xFFFF;
+            default:
+                return 0;
+        }
+    }
+private:
+    SplitWord32 requestPointer_;
+    SplitWord32 maximumSpeed_{MAX_SPI};
 };
 
 #endif //SXCHIPSETGCM4TYPE2_SPIMEMORYSPACE_H

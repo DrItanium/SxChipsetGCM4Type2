@@ -31,7 +31,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <experimental/memory>
 #include "MemorySpace.h"
 /**
- * @brief A simple memory space that takes up a single 256 byte page, this is basically a simple 64 entry lookup table
+ * @brief A simple memory space that takes up a single 256 byte page, it does not provide any backing storage
  */
 class SinglePageMemorySpace : public SizedMemorySpace {
 public:
@@ -40,39 +40,6 @@ public:
 public:
     SinglePageMemorySpace() : Parent(1) { }
     ~SinglePageMemorySpace() override = default;
-    constexpr auto& operator[](uint8_t index) noexcept { return getEntry(index); }
-    constexpr const auto& operator[](uint8_t index) const noexcept { return getEntry(index); }
-    constexpr auto& operator[](uint32_t index) noexcept { return getEntry(index); }
-    constexpr const auto& operator[](uint32_t index) const noexcept { return getEntry(index); }
-private:
-    constexpr SplitWord16& getEntry(uint8_t index) noexcept { return entries_[index & 0b0111'1111]; }
-    constexpr const SplitWord16& getEntry(uint8_t index) const noexcept { return entries_[index & 0b0111'1111]; }
-    constexpr SplitWord16& getEntry(uint32_t index) noexcept { return getEntry(static_cast<uint8_t>(index >> 1)); }
-    constexpr const SplitWord16& getEntry(uint32_t index) const noexcept { return getEntry(static_cast<uint8_t>(index >> 1)); }
-public:
-    void
-    write(uint32_t address, SplitWord16 value, LoadStoreStyle lss) noexcept override {
-        switch (auto& result = getEntry(address); lss) {
-            case LoadStoreStyle::Full16:
-                result = value;
-                break;
-            case LoadStoreStyle::Upper8:
-                result.bytes[1] = value.bytes[1];
-                break;
-            case LoadStoreStyle::Lower8:
-                result.bytes[0] = value.bytes[0];
-                break;
-            default:
-                break;
-        }
-    }
-    [[nodiscard]]
-    uint16_t
-    read(uint32_t address, LoadStoreStyle lss) const noexcept override {
-        return getEntry(address).getWholeValue();
-    }
-private:
-    SplitWord16 entries_[128];
 };
 
 #endif //SXCHIPSETGCM4TYPE2_SINGLEPAGEMEMORYSPACE_H
