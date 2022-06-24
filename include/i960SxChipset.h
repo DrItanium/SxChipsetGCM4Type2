@@ -32,7 +32,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <tuple>
 #include "MemorySpace.h"
 
-MemorySpace::ObserverPtr getMemory() noexcept;
+MemorySpace::Ptr getMemory() noexcept;
 [[noreturn]] void signalHaltState(const __FlashStringHelper* msg) noexcept;
 [[noreturn]] void signalHaltState(const char* msg) noexcept;
 [[noreturn]] void signalHaltState(const std::string& msg) noexcept;

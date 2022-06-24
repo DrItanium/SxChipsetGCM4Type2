@@ -31,7 +31,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <Arduino.h>
 #include "MemorySpace.h"
 //template<Address baseAddress, bool addressDebuggingAllowed, bool defaultAddressDebuggingModeTo = false>
-class Serial0Interface : public MemorySpace {
+class Serial0Interface : public SizedMemorySpace {
 public:
     enum class Registers : uint8_t {
 #define TwoByteEntry(Prefix) Prefix ## 0, Prefix ## 1
@@ -71,9 +71,9 @@ public:
         // we ignore the upper half of the register but reserve it to make sure
     };
     using Self = Serial0Interface;
-    using Parent = MemorySpace;
+    using Parent = SizedMemorySpace;
 public:
-    Serial0Interface(uint32_t baseAddress) : Parent(baseAddress, 1) { }
+    Serial0Interface() : Parent(1) { }
     ~Serial0Interface() override = default;
 private:
     template<unsigned int usecDelay = 100, unsigned long cooloffThreshold = 128>
@@ -117,7 +117,7 @@ public:
     }
 
     void
-    write(uint32_t address, SplitWord16 value, LoadStoreStyle) noexcept {
+    write(uint32_t address, SplitWord16 value, LoadStoreStyle) noexcept override {
         switch (static_cast<uint8_t>(address)) {
             case 0: sendToConsole(static_cast<char>(value.getWholeValue())); break;
             case 2: Serial.flush(); break;

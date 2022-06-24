@@ -300,9 +300,9 @@ setupMemoryMap() {
     configurationSpace.addDevice(uart0);
     /// @todo implement
 }
-MemorySpace::ObserverPtr
+MemorySpace::Ptr
 getMemory() noexcept {
-    static MemorySpace::ObserverPtr space;
+    static MemorySpace::Ptr space;
     static bool initialized = false;
     if (!initialized) {
         initialized = true;

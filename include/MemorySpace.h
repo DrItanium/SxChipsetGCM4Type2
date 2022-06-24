@@ -40,7 +40,6 @@ public:
     using Self = MemorySpace;
     using Ptr = std::experimental::observer_ptr<Self>;
 public:
-    MemorySpace() = default;
     virtual ~MemorySpace() = default;
     /**
      * @brief Write a given value to memory
@@ -122,6 +121,7 @@ public:
     void handleWriteRequest(uint32_t baseAddress) noexcept override;
     uint32_t read(uint32_t address, uint16_t* value, uint32_t count) noexcept override;
     uint32_t write(uint32_t address, uint16_t* value, uint32_t count) noexcept override;
+    virtual auto getBaseAddress() const noexcept { return 0; }
 private:
     uint32_t numPages_;
     uint32_t endAddress_;
@@ -138,96 +138,44 @@ public:
     void handleWriteRequest(uint32_t baseAddress) noexcept override;
     uint32_t read(uint32_t address, uint16_t *value, uint32_t count) noexcept override;
     uint32_t write(uint32_t address, uint16_t *value, uint32_t count) noexcept override;
+    auto getBaseAddress() const noexcept { return baseAddress_; }
 private:
     [[nodiscard]] constexpr uint32_t makeAddressRelative(uint32_t absoluteAddress) const noexcept { return absoluteAddress - baseAddress_; }
 private:
     uint32_t baseAddress_;
     MemorySpace::Ptr& ptr_;
-
-
 };
-
 /**
- * @brief A class which holds onto a set of sub memory spaces
+ * @brief M
  */
-class ContainerSpace : public MemorySpace {
+class ContainerMemorySpace : public MemorySpace {
 public:
     using Parent = MemorySpace;
-    using Self = ContainerSpace;
+    using Self = ContainerMemorySpace;
 public:
-    ContainerSpace(uint32_t baseAddress, uint32_t numPages) : Parent(baseAddress, numPages) { }
-    ~ContainerSpace() override = default;
-
-    void
-    write(uint32_t address, SplitWord16 value, LoadStoreStyle lss, TreatAsRelativeAddress) noexcept override {
-        if (auto result = find(address); result) {
-            // the address is a relative address according to this memory space, but to children it is an absolute address
-            result->write(address, value, lss, TreatAsAbsoluteAddress{}) ;
-        }
-    }
-    uint16_t
-    read(uint32_t address, LoadStoreStyle lss, TreatAsRelativeAddress) const noexcept override {
-        // generally, if we are at this point then we found a successful match!
-        if (auto result = find(address); result) {
-            // the address is relative to the parent but is an absolute address inside this memory space according to its children
-            return result->read(address, lss, TreatAsAbsoluteAddress{});
-        } else {
-            return 0;
-        }
-    }
+    ~ContainerMemorySpace() override = default;
+    void write(uint32_t address, SplitWord16 value, LoadStoreStyle lss) noexcept override;
+    uint16_t read(uint32_t address, LoadStoreStyle lss) const noexcept override;
+    bool respondsTo(uint32_t address) const noexcept override;
+    void handleReadRequest(uint32_t baseAddress) noexcept override;
+    void handleWriteRequest(uint32_t baseAddress) noexcept override;
     uint32_t read(uint32_t address, uint16_t *value, uint32_t count) noexcept override;
     uint32_t write(uint32_t address, uint16_t *value, uint32_t count) noexcept override;
-protected:
-    MemorySpace::ObserverPtr
-    find(uint32_t address) const noexcept {
-        for (const auto& subSpace : subSpaces_) {
-            if (subSpace->respondsTo(address)) {
-                return subSpace;
-            }
-        }
-        return nullptr;
-    }
-public:
-    [[nodiscard]] bool empty() const noexcept { return subSpaces_.empty(); }
-    [[nodiscard]] auto size() const noexcept { return subSpaces_.size(); }
-    [[nodiscard]] bool emplace_back(MemorySpace::ObserverPtr targetPtr) noexcept {
-        if (auto oldBaseAddress = targetPtr->getBaseAddress(), newRelativeAddress  = makeAddressRelative(oldBaseAddress); targetPtr->setBaseAddress(newRelativeAddress)) {
-            // so updated base address was successful but we are not sure if the target item will fit within the memory space
-            if (targetPtr->getEndAddress() > getEndAddress()) {
-                // okay we've overflowed, restore
-                (void)targetPtr->setBaseAddress(oldBaseAddress);
-                return false;
-            } else {
-                // the remapping was successful so add it to the list
-                subSpaces_.emplace_back(targetPtr);
-                return true;
-            }
-        }
-        // We overflowed memory in general so return false
-        return false;
-    }
-    template<typename T>
-    [[nodiscard]] bool emplace_back(T& targetPtr) noexcept { return emplace_back(std::experimental::make_observer(&targetPtr)); }
+    void emplace_back(Parent::Ptr target) noexcept { children_.emplace_back(target); }
 private:
-    // yes mutable is gross but I have an interface to satisfy
-    std::vector<ObserverPtr> subSpaces_;
+    Parent::Ptr find(uint32_t address) noexcept;
+    const Parent::Ptr find(uint32_t address) const noexcept;
+private:
+    std::vector<Parent::Ptr> children_;
 };
-class CompleteMemorySpace : public ContainerSpace {
+
+class CompleteMemorySpace : public ContainerMemorySpace {
 public:
     using Self = CompleteMemorySpace;
-    using Parent = ContainerSpace;
+    using Parent = ContainerMemorySpace;
     using Ptr = std::shared_ptr<Self>;
 public:
-    CompleteMemorySpace() : Parent(0, 0x00FFFFFF) { }
     [[nodiscard]] bool respondsTo(uint32_t address) const noexcept override { return true; }
-    [[nodiscard]] uint32_t makeAddressRelative(uint32_t absoluteAddress) const noexcept override { return absoluteAddress; }
 };
 
-/**
- * @brief Wrapper class around another memory space used to allow proper responsive
- */
-class MappedMemorySpace : public MemorySpace {
-public:
-
-};
 #endif //SXCHIPSETGCM4TYPE2_MEMORYSPACE_H

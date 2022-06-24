@@ -28,6 +28,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "MemorySpace.h"
 #include "ManagementEngine.h"
 #include "ProcessorSerializer.h"
+#include <functional>
 
 void
 MemorySpace::handleReadRequest(uint32_t baseAddress) noexcept {
@@ -85,15 +86,6 @@ SizedMemorySpace::write(uint32_t address, uint16_t* value, uint32_t count) noexc
     }
     return numWritten;
 }
-uint32_t
-ContainerSpace::read(uint32_t address, uint16_t *value, uint32_t count) noexcept {
-    /// @todo reimplement so that we can support spanning multiple sub memory spaces
-    return MemorySpace::read(address, value, count);
-}
-uint32_t
-ContainerSpace::write(uint32_t address, uint16_t *value, uint32_t count) noexcept {
-    return MemorySpace::write(address, value, count);
-}
 void
 MappedMemorySpace::write(uint32_t address, SplitWord16 value, LoadStoreStyle lss) noexcept {
     ptr_->write(makeAddressRelative(address), value, lss);
@@ -123,5 +115,81 @@ MappedMemorySpace::write(uint32_t address, uint16_t *value, uint32_t count) noex
     return ptr_->write(makeAddressRelative(address), value, count);
 }
 
-void MemorySpace::handleWriteRequest() noexcept { handleWriteRequest(ProcessorInterface::getAddress()); }
-void MemorySpace::handleReadRequest() noexcept { handleReadRequest(ProcessorInterface::getAddress()); }
+void
+MemorySpace::handleWriteRequest() noexcept {
+    handleWriteRequest(ProcessorInterface::getAddress());
+}
+void
+MemorySpace::handleReadRequest() noexcept {
+    handleReadRequest(ProcessorInterface::getAddress());
+}
+
+void
+ContainerMemorySpace::write(uint32_t address, SplitWord16 value, LoadStoreStyle lss) noexcept {
+    if (auto result = find(address); result) {
+        result->write(address, value, lss);
+    }
+}
+uint16_t
+ContainerMemorySpace::read(uint32_t address, LoadStoreStyle lss) const noexcept {
+    if (auto result = find(address); result) {
+        return result->read(address, lss);
+    }
+    return 0;
+}
+bool
+ContainerMemorySpace::respondsTo(uint32_t address) const noexcept {
+    return find(address) != nullptr;
+}
+
+void
+ContainerMemorySpace::handleReadRequest(uint32_t baseAddress) noexcept {
+    if (auto result = find(baseAddress); result) {
+        result->handleReadRequest(baseAddress);
+    } else {
+        Parent::handleReadRequest(baseAddress);
+    }
+}
+void
+ContainerMemorySpace::handleWriteRequest(uint32_t baseAddress) noexcept {
+    if (auto result = find(baseAddress); result) {
+        result->handleWriteRequest(baseAddress);
+    } else {
+        Parent::handleWriteRequest(baseAddress);
+    }
+}
+uint32_t
+ContainerMemorySpace::read(uint32_t address, uint16_t *value, uint32_t count) noexcept {
+    if (auto result = find(address); result) {
+        return result->read(address, value, count);
+    } else {
+        return 0;
+    }
+}
+uint32_t
+ContainerMemorySpace::write(uint32_t address, uint16_t *value, uint32_t count) noexcept {
+    if (auto result = find(address); result) {
+        return result->write(address, value, count);
+    } else {
+        return 0;
+    }
+}
+MemorySpace::Ptr
+ContainerMemorySpace::find(uint32_t address) noexcept {
+    for (auto& a : children_) {
+        if (a->respondsTo(address))  {
+            return a;
+        }
+    }
+    return nullptr;
+}
+
+const MemorySpace::Ptr
+ContainerMemorySpace::find(uint32_t address) const noexcept {
+    for (const auto& a : children_) {
+        if (a->respondsTo(address))  {
+            return a;
+        }
+    }
+    return nullptr;
+}
