@@ -82,6 +82,7 @@ CompleteMemorySpace fullSpace;
 SystemRam_t theRAM;
 CoreChipsetFeatures configurationSpace;
 UART0Interface uart0;
+SPIMemorySpace spi0;
 
 template<bool inDebugMode>
 void invocationBody() noexcept {
@@ -302,10 +303,12 @@ setupMemoryMap() {
     static constexpr uint32_t ramStart = 0x0000'0000;
     auto memory = map(ramStart, theRAM);
     /// @todo define more items here
+    auto spi = map(chipsetDevicesStart + 0xE'FE00, spi0);
     auto serial = map(chipsetDevicesStart + 0xE'FF00, uart0);
     static_assert((0xFFFE'FF00 + (1 << 8)) == 0xFFFF'0000);
     auto configSpaceMapping = map(chipsetDevicesStart + 0xF'0000, configurationSpace);
     configurationSpace.addDevice(serial);
+    configurationSpace.addDevice(spi);
     fullSpace.emplace_back(memory);
     fullSpace.emplace_back(configSpaceMapping);
     fullSpace.emplace_back(serial);

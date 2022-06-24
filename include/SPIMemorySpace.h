@@ -40,7 +40,7 @@ public:
     SPIMemorySpace() : Parent() { }
     ~SPIMemorySpace() override = default;
 private:
-    void performSPITransfer();
+    void performSPITransfer() noexcept;
 public:
     void write(uint32_t address, SplitWord16 value, LoadStoreStyle lss) noexcept override {
         // ignore non Full16 writes!
