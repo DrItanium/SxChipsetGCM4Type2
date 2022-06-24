@@ -49,6 +49,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "ManagementEngine.h"
 #include "RAM.h"
 #include "SinglePageMemorySpace.h"
+#include "SPIMemorySpace.h"
 constexpr auto RTCBaseAddress = 0xFA00'0000;
 constexpr auto Serial0BaseAddress = 0xFB00'0000;
 constexpr auto SDBaseAddress = 0xFD00'0000;
