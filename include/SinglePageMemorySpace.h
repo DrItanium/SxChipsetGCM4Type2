@@ -40,11 +40,19 @@ public:
 public:
     SinglePageMemorySpace() : Parent(1) { }
     ~SinglePageMemorySpace() override = default;
-    constexpr auto& operator[](uint8_t index) noexcept { return entries_[index & 0b1111111]; }
-    constexpr const auto& operator[](uint8_t index) const noexcept { return entries_[index & 0b1111111]; }
+    constexpr auto& operator[](uint8_t index) noexcept { return getEntry(index); }
+    constexpr const auto& operator[](uint8_t index) const noexcept { return getEntry(index); }
+    constexpr auto& operator[](uint32_t index) noexcept { return getEntry(index); }
+    constexpr const auto& operator[](uint32_t index) const noexcept { return getEntry(index); }
+private:
+    constexpr SplitWord16& getEntry(uint8_t index) noexcept { return entries_[index & 0b0111'1111]; }
+    constexpr const SplitWord16& getEntry(uint8_t index) const noexcept { return entries_[index & 0b0111'1111]; }
+    constexpr SplitWord16& getEntry(uint32_t index) noexcept { return getEntry(static_cast<uint8_t>(index >> 1)); }
+    constexpr const SplitWord16& getEntry(uint32_t index) const noexcept { return getEntry(static_cast<uint8_t>(index >> 1)); }
+public:
     void
     write(uint32_t address, SplitWord16 value, LoadStoreStyle lss) noexcept override {
-        switch (auto result = operator[](static_cast<uint8_t>(address >> 1)); lss) {
+        switch (auto& result = getEntry(address); lss) {
             case LoadStoreStyle::Full16:
                 result = value;
                 break;
@@ -61,7 +69,7 @@ public:
     [[nodiscard]]
     uint16_t
     read(uint32_t address, LoadStoreStyle lss) const noexcept override {
-        return operator[](static_cast<uint8_t>(address >> 1)).wholeValue_;
+        return getEntry(address).getWholeValue();
     }
 private:
     SplitWord16 entries_[128];
