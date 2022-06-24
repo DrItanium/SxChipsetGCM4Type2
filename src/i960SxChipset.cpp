@@ -33,6 +33,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <SdFat.h>
 #include <tuple>
 #include "Pinout.h"
+#include <memory>
 
 #include "CacheEntry.h"
 #include "SetAssociativeRandPLRUCacheSets.h"
@@ -311,7 +312,7 @@ getMemory() noexcept {
     static bool initialized = false;
     if (!initialized) {
         initialized = true;
-        space = std::experimental::make_observer(&fullSpace);
+        space = std::make_shared<MemorySpace>(fullSpace);
     }
     return space;
 }
