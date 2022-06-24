@@ -34,11 +34,11 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "SinglePoolCache.h"
 #include "Pinout.h"
 template<typename S>
-class RAM : public MemorySpace {
+class RAM : public SizedMemorySpace {
 public:
     using Self = RAM;
     using Ptr = std::shared_ptr<Self>;
-    using Parent = MemorySpace;
+    using Parent = SizedMemorySpace;
     using BackingMemoryStorage_t = S;
     static constexpr auto CacheLineSize = TargetBoard::getCacheLineSizeInBits();
     static constexpr auto CompileInAddressDebuggingSupport = TargetBoard::compileInAddressDebuggingSupport();
@@ -47,11 +47,10 @@ public:
     static constexpr auto CompileInExtendedDebugInformation = TargetBoard::compileInExtendedDebugInformation();
     static constexpr auto ValidateTransferDuringInstall = TargetBoard::validateTransferDuringInstall();
     using Cache_t = Cache2Instance_t<TenWayRandPLRUCacheWay, 256, CacheLineSize, BackingMemoryStorage_t, CompileInAddressDebuggingSupport>;
-    static constexpr auto BaseAddress = 0;
     static constexpr auto NumPages = (512 * 1024 * 1024) / 256;
     using TaggedAddress = typename Cache_t::TaggedAddress;
 public:
-    RAM() : Parent(BaseAddress, NumPages) {
+    RAM() : Parent(NumPages) {
         theCache_.begin();
     }
     ~RAM() override = default;
@@ -66,18 +65,11 @@ public:
     read(uint32_t address, LoadStoreStyle lss) const noexcept override {
         return theCache_.getLine(TaggedAddress{address}).get(ProcessorInterface::getCacheOffsetEntry<Cache_t::CacheEntryMask>(SplitWord32{address}));
     }
-    uint32_t write(uint32_t baseAddress, uint8_t *data, uint32_t count) noexcept override {
-        /// @todo implement
-        return 0;
-    }
-    uint32_t read(uint32_t baseAddress, uint8_t *data, uint32_t count) noexcept override {
-        /// @todo implement
-        return 0;
-    }
-    void handleReadRequest() noexcept override {
-        auto start = ProcessorInterface::getCacheOffsetEntry<decltype(theCache_)::CacheEntryMask>();
+    void
+    handleReadRequest(uint32_t baseAddress) noexcept override {
+        auto start = ProcessorInterface::getCacheOffsetEntry<decltype(theCache_)::CacheEntryMask>(SplitWord32{baseAddress});
         auto end = start + 8;
-        auto& theEntry = theCache_.getLine();
+        auto& theEntry = theCache_.getLine(TaggedAddress{baseAddress});
         // when dealing with read operations, we can actually easily unroll the do while by starting at the cache offset entry and walking
         // forward until we either hit the end of the cache line or blast is asserted first (both are valid states)
         for (auto i = start; i < end; ++i) {
@@ -92,10 +84,11 @@ public:
             ProcessorInterface::burstNext<false>();
         }
     }
-    void handleWriteRequest() noexcept override {
-        auto start = ProcessorInterface::getCacheOffsetEntry<Cache_t::CacheEntryMask>();
+    void handleWriteRequest(uint32_t baseAddress) noexcept override {
+        auto start = ProcessorInterface::getCacheOffsetEntry<decltype(theCache_)::CacheEntryMask>(SplitWord32{baseAddress});
         auto end = start + 8;
-        auto& theEntry = theCache_.getLine();
+
+        auto& theEntry = theCache_.getLine(TaggedAddress{baseAddress});
         // when dealing with writes to the cache line we are safe in just looping through from the start to at most 8 because that is as
         // far as we can go with how the Sx works!
 

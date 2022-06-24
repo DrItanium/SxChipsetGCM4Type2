@@ -29,31 +29,33 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #ifndef SXCHIPSETGCM4TYPE2_SINGLEPAGEMEMORYSPACE_H
 #define SXCHIPSETGCM4TYPE2_SINGLEPAGEMEMORYSPACE_H
 #include <experimental/memory>
-#include <initializer_list>
-#include <array>
 #include "MemorySpace.h"
 /**
  * @brief A simple memory space that takes up a single 256 byte page, this is basically a simple 64 entry lookup table
  */
-class SinglePageMemorySpace : public MemorySpace {
+class SinglePageMemorySpace : public SizedMemorySpace {
 public:
     using Self = SinglePageMemorySpace;
-    using Parent = MemorySpace;
-    using ObserverPtr = std::experimental::observer_ptr<Self>;
-    using BackingStore = std::array<uint32_t, 256 /* bytes */ / sizeof(uint32_t)>;
+    using Parent = SizedMemorySpace;
 public:
-    explicit SinglePageMemorySpace(uint32_t baseAddress) : Parent(baseAddress, 1) { }
+    SinglePageMemorySpace() : Parent(1) { }
     ~SinglePageMemorySpace() override = default;
     constexpr auto& operator[](uint8_t index) noexcept { return entries_[index & 0b1111111]; }
     constexpr const auto& operator[](uint8_t index) const noexcept { return entries_[index & 0b1111111]; }
     void
     write(uint32_t address, SplitWord16 value, LoadStoreStyle lss) noexcept override {
-        auto& result = operator[](static_cast<uint8_t>(address >> 1));
-        if (static_cast<uint8_t>(lss) & static_cast<uint8_t>(LoadStoreStyle::Upper8)) {
-           result.bytes[1] = value.bytes[1];
-        }
-        if (static_cast<uint8_t>(lss) & static_cast<uint8_t>(LoadStoreStyle::Lower8)) {
-            result.bytes[0] = value.bytes[0];
+        switch (auto result = operator[](static_cast<uint8_t>(address >> 1)); lss) {
+            case LoadStoreStyle::Full16:
+                result = value;
+                break;
+            case LoadStoreStyle::Upper8:
+                result.bytes[1] = value.bytes[1];
+                break;
+            case LoadStoreStyle::Lower8:
+                result.bytes[0] = value.bytes[0];
+                break;
+            default:
+                break;
         }
     }
     [[nodiscard]]

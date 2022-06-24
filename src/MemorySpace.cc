@@ -88,31 +88,31 @@ SizedMemorySpace::write(uint32_t address, uint16_t* value, uint32_t count) noexc
 }
 void
 MappedMemorySpace::write(uint32_t address, SplitWord16 value, LoadStoreStyle lss) noexcept {
-    ptr_->write(makeAddressRelative(address), value, lss);
+    ptr_.write(makeAddressRelative(address), value, lss);
 }
 uint16_t
 MappedMemorySpace::read(uint32_t address, LoadStoreStyle lss) const noexcept {
-    return ptr_->read(makeAddressRelative(address), lss);
+    return ptr_.read(makeAddressRelative(address), lss);
 }
 bool
 MappedMemorySpace::respondsTo(uint32_t address) const noexcept {
-    return address >= baseAddress_ && ptr_->respondsTo(address);
+    return address >= baseAddress_ && ptr_.respondsTo(address);
 }
 void
 MappedMemorySpace::handleReadRequest(uint32_t addr) noexcept {
-    ptr_->handleReadRequest(makeAddressRelative(addr));
+    ptr_.handleReadRequest(makeAddressRelative(addr));
 }
 void
 MappedMemorySpace::handleWriteRequest(uint32_t addr) noexcept {
-    ptr_->handleWriteRequest(makeAddressRelative(addr));
+    ptr_.handleWriteRequest(makeAddressRelative(addr));
 }
 uint32_t
 MappedMemorySpace::read(uint32_t address, uint16_t *value, uint32_t count) noexcept {
-    return ptr_->read(makeAddressRelative(address), value, count);
+    return ptr_.read(makeAddressRelative(address), value, count);
 }
 uint32_t
 MappedMemorySpace::write(uint32_t address, uint16_t *value, uint32_t count) noexcept {
-    return ptr_->write(makeAddressRelative(address), value, count);
+    return ptr_.write(makeAddressRelative(address), value, count);
 }
 
 void
@@ -192,4 +192,8 @@ ContainerMemorySpace::find(uint32_t address) const noexcept {
         }
     }
     return nullptr;
+}
+MappedMemorySpace::Ptr
+map(uint32_t baseAddress, MemorySpace& space) noexcept {
+    return std::make_shared<MappedMemorySpace>(baseAddress, space);
 }

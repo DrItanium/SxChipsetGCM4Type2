@@ -79,7 +79,7 @@ using SystemRam_t = RAM<BackingMemoryStorage_t>;
 CompleteMemorySpace fullSpace;
 SystemRam_t theRAM;
 CoreChipsetFeatures configurationSpace;
-UART0Interface uart0{0xFFFE'FF00};
+UART0Interface uart0;
 
 template<bool inDebugMode>
 void invocationBody() noexcept {
@@ -294,10 +294,15 @@ signalHaltState(const std::string& haltMsg) noexcept {
 }
 void
 setupMemoryMap() {
+#if 0
     fullSpace.emplace_back(theRAM);
     fullSpace.emplace_back(configurationSpace);
     fullSpace.emplace_back(uart0);
-    configurationSpace.addDevice(uart0);
+#endif
+    auto serial = map(0xFFFE'FF00, uart0);
+    auto configSpaceMapping = map(0xFFFF'0000, configurationSpace);
+    auto memory = map(0x0000'0000, theRAM);
+    configurationSpace.addDevice(serial);
     /// @todo implement
 }
 MemorySpace::Ptr

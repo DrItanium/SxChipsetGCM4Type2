@@ -32,40 +32,32 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "SDCardInterface.h"
 #include "Serial0Interface.h"
 #include "MemorySpace.h"
-class CoreChipsetFeatures : public MemorySpace {
+class CoreChipsetFeatures : public SizedMemorySpace {
 public:
     static constexpr Address IOBaseAddress = 0xFFFF'0000;
-    using Parent = MemorySpace;
+    using Parent = SizedMemorySpace;
     using Self = CoreChipsetFeatures;
     using Ptr = std::shared_ptr<Self>;
 public:
-    CoreChipsetFeatures() : Parent(0xFFFF'0000, 32) { }
+    CoreChipsetFeatures() : Parent(32) { }
     ~CoreChipsetFeatures() override = default;
     constexpr auto numPopulated() const noexcept { return numberOfItems_;  }
     constexpr auto maxSize() const noexcept { return 1024; }
     constexpr auto empty() const noexcept { return numberOfItems_ == 0; }
     constexpr auto full() const noexcept { return numberOfItems_ == maxSize(); }
-private:
-    void
-    addDevice(uint8_t page, uint8_t offset, uint32_t address, uint32_t flags) {
-        auto targetPage = page & 0b11111;
-        auto targetOffset = offset & 0b11111;
-        entries_[targetPage][targetOffset] = ConfigurationEntry{address, flags};
-    }
 public:
     const auto& getConfigurationDevice(uint16_t deviceId) const noexcept { return entries_[(deviceId >> 5) & 0b11111][deviceId & 0b11111]; }
     auto& getConfigurationDevice(uint16_t deviceId) noexcept { return entries_[(deviceId >> 5) & 0b11111][deviceId & 0b11111]; }
     bool
-    addDevice(const MemorySpace& ptr, uint32_t flags = 0) noexcept {
+    addDevice(const MemorySpace::Ptr& ptr, uint32_t flags = 0) noexcept {
         if (!full()) {
             auto& configDevice = getConfigurationDevice(numberOfItems_);
             ++numberOfItems_;
-            configDevice.baseAddress_ = ptr.getBaseAddress();
+            configDevice.baseAddress_ = ptr->getBaseAddress();
             configDevice.flags_ = 0x8000'0000 | flags;
             return true;
-        } else {
-            return false;
         }
+        return false;
     }
 
 private:
@@ -92,23 +84,6 @@ public:
     [[nodiscard]] uint16_t read(uint32_t address, LoadStoreStyle lss) const noexcept override {
         auto [targetPage, targetOffset] = computeTarget(address);
         return readGeneric(targetPage, targetOffset, lss);
-    }
-    uint32_t
-    read(uint32_t address, uint8_t* container, uint32_t count) noexcept override {
-        // start at the target address after computing the actual begin and end
-        auto numberOfBytesToWalk = computeNumberOfBytesToWalk(address, count);
-        auto startPosition = makeRelativeAddress(address);
-        auto endPosition = startPosition + numberOfBytesToWalk;
-        auto* entryView = reinterpret_cast<uint8_t*>(&this->entries_);
-        auto* window = container;
-        for (auto p = startPosition; p < endPosition; ++p, ++window) {
-            *window = entryView[p];
-        }
-        return numberOfBytesToWalk;
-    }
-    uint32_t
-    write(uint32_t address, uint8_t*, uint32_t count) noexcept override {
-        return computeNumberOfBytesToWalk(address, count);
     }
 private:
     [[nodiscard]] uint16_t readGeneric(uint8_t targetPage, uint8_t offset, LoadStoreStyle lss) const noexcept {

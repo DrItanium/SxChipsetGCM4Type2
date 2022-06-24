@@ -38,7 +38,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 class MemorySpace {
 public:
     using Self = MemorySpace;
-    using Ptr = std::experimental::observer_ptr<Self>;
+    using Ptr = std::shared_ptr<Self>;
 public:
     virtual ~MemorySpace() = default;
     /**
@@ -67,6 +67,7 @@ public:
     void handleWriteRequest() noexcept;
     virtual uint32_t read(uint32_t address, uint16_t* value, uint32_t count) noexcept = 0;
     virtual uint32_t write(uint32_t address, uint16_t* value, uint32_t count) noexcept = 0;
+    virtual uint32_t getBaseAddress() const noexcept { return 0; }
 };
 /**
  * @brief Abstract representation of a memory space that can be accessed in a generic fashion; It has a base address (256-byte aligned) and consumes 1 or more pages!
@@ -76,7 +77,6 @@ class SizedMemorySpace : public MemorySpace {
 public:
     using Self = SizedMemorySpace;
     using Ptr = std::shared_ptr<Self>;
-    using ObserverPtr = std::experimental::observer_ptr<Self>;
     static constexpr uint32_t fixBaseAddress(uint32_t value) noexcept { return value & 0xFFFFFF00; }
     static constexpr uint32_t correctPageCount(uint32_t value) noexcept { return value < 1 ? 1 : value; }
 public:
@@ -121,7 +121,6 @@ public:
     void handleWriteRequest(uint32_t baseAddress) noexcept override;
     uint32_t read(uint32_t address, uint16_t* value, uint32_t count) noexcept override;
     uint32_t write(uint32_t address, uint16_t* value, uint32_t count) noexcept override;
-    virtual auto getBaseAddress() const noexcept { return 0; }
 private:
     uint32_t numPages_;
     uint32_t endAddress_;
@@ -129,7 +128,9 @@ private:
 
 class MappedMemorySpace : public MemorySpace {
 public:
-    explicit MappedMemorySpace(uint32_t baseAddress, MemorySpace::Ptr& ptr) : baseAddress_(baseAddress), ptr_(ptr) { }
+    using Self = MappedMemorySpace;
+    using Ptr = std::shared_ptr<Self>;
+    explicit MappedMemorySpace(uint32_t baseAddress, MemorySpace& ptr) : baseAddress_(baseAddress), ptr_(ptr) { }
     ~MappedMemorySpace() override = default;
     void write(uint32_t address, SplitWord16 value, LoadStoreStyle lss) noexcept override;
     uint16_t read(uint32_t address, LoadStoreStyle lss) const noexcept override;
@@ -138,12 +139,12 @@ public:
     void handleWriteRequest(uint32_t baseAddress) noexcept override;
     uint32_t read(uint32_t address, uint16_t *value, uint32_t count) noexcept override;
     uint32_t write(uint32_t address, uint16_t *value, uint32_t count) noexcept override;
-    auto getBaseAddress() const noexcept { return baseAddress_; }
+    uint32_t getBaseAddress() const noexcept override { return baseAddress_; }
 private:
     [[nodiscard]] constexpr uint32_t makeAddressRelative(uint32_t absoluteAddress) const noexcept { return absoluteAddress - baseAddress_; }
 private:
     uint32_t baseAddress_;
-    MemorySpace::Ptr& ptr_;
+    MemorySpace& ptr_;
 };
 /**
  * @brief M
@@ -161,7 +162,7 @@ public:
     void handleWriteRequest(uint32_t baseAddress) noexcept override;
     uint32_t read(uint32_t address, uint16_t *value, uint32_t count) noexcept override;
     uint32_t write(uint32_t address, uint16_t *value, uint32_t count) noexcept override;
-    void emplace_back(Parent::Ptr target) noexcept { children_.emplace_back(target); }
+    void emplace_back(const Parent::Ptr& target) noexcept { children_.emplace_back(target); }
 private:
     Parent::Ptr find(uint32_t address) noexcept;
     const Parent::Ptr find(uint32_t address) const noexcept;
@@ -178,4 +179,5 @@ public:
     [[nodiscard]] bool respondsTo(uint32_t address) const noexcept override { return true; }
 };
 
+MappedMemorySpace::Ptr map(uint32_t baseAddress, MemorySpace& space) noexcept;
 #endif //SXCHIPSETGCM4TYPE2_MEMORYSPACE_H
