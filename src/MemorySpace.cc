@@ -30,39 +30,35 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "ProcessorSerializer.h"
 
 void
-MemorySpace::handleReadRequest() noexcept {
-    do {
+MemorySpace::handleReadRequest(uint32_t baseAddress) noexcept {
+    for (auto address = baseAddress; ;address += 2) {
         // wait for
         ManagementEngine::waitForCycleUnlock();
-        ProcessorInterface::setDataBits(read(ProcessorInterface::getAddress(),
+        ProcessorInterface::setDataBits(read(address,
                                              ProcessorInterface::getStyle()));
         if (ManagementEngine::informCPU()) {
             break;
         }
-        ProcessorInterface::burstNext<true>(); // advance the address
-    } while (true);
+    }
 }
 
 void
-MemorySpace::handleWriteRequest() noexcept {
-    do {
-        // wait for
+MemorySpace::handleWriteRequest(uint32_t baseAddress) noexcept {
+    for (auto address = baseAddress; ; address += 2) {
         ManagementEngine::waitForCycleUnlock();
-        // get the data bits but do nothing with it just to delay things
-        write(ProcessorInterface::getAddress(),
+        write(address,
               ProcessorInterface::getDataBits(),
               ProcessorInterface::getStyle());
         if (ManagementEngine::informCPU()) {
             break;
         }
-        ProcessorInterface::burstNext<true>();
-    } while (true);
+    }
 }
 
 uint32_t
 SizedMemorySpace::read(uint32_t address, uint16_t* value, uint32_t count) noexcept {
-    auto relativeStartAddress = makeAddressRelative(address);
-    auto relativeTotalEndAddress = makeAddressRelative(endAddress_);
+    auto relativeStartAddress = address;
+    auto relativeTotalEndAddress = endAddress_;
     // okay so now that we have a relative address, we need to know how many bytes to walk through
     auto relativeEndAddress = relativeStartAddress + count;
     if (relativeTotalEndAddress < relativeEndAddress) {
@@ -70,14 +66,14 @@ SizedMemorySpace::read(uint32_t address, uint16_t* value, uint32_t count) noexce
     }
     uint32_t numRead = 0;
     for (auto i = relativeStartAddress; i < relativeEndAddress; i+=sizeof(uint16_t), ++numRead, ++value) {
-        *value = read(i, LoadStoreStyle::Full16, TreatAsRelativeAddress{});
+        *value = read(i, LoadStoreStyle::Full16);
     }
     return numRead;
 }
 uint32_t
 SizedMemorySpace::write(uint32_t address, uint16_t* value, uint32_t count) noexcept {
-    auto relativeStartAddress = makeAddressRelative(address);
-    auto relativeTotalEndAddress = makeAddressRelative(endAddress_);
+    auto relativeStartAddress = address;
+    auto relativeTotalEndAddress = endAddress_;
     // okay so now that we have a relative address, we need to know how many bytes to walk through
     auto relativeEndAddress = relativeStartAddress + count;
     if (relativeTotalEndAddress < relativeEndAddress) {
@@ -85,7 +81,7 @@ SizedMemorySpace::write(uint32_t address, uint16_t* value, uint32_t count) noexc
     }
     uint32_t numWritten = 0;
     for (auto i = relativeStartAddress; i < relativeEndAddress; i+=sizeof(uint16_t), ++numWritten, ++value) {
-        write(i, SplitWord16{*value}, LoadStoreStyle::Full16, TreatAsRelativeAddress{});
+        write(i, SplitWord16{*value}, LoadStoreStyle::Full16);
     }
     return numWritten;
 }
@@ -126,3 +122,6 @@ uint32_t
 MappedMemorySpace::write(uint32_t address, uint16_t *value, uint32_t count) noexcept {
     return ptr_->write(makeAddressRelative(address), value, count);
 }
+
+void MemorySpace::handleWriteRequest() noexcept { handleWriteRequest(ProcessorInterface::getAddress()); }
+void MemorySpace::handleReadRequest() noexcept { handleReadRequest(ProcessorInterface::getAddress()); }

@@ -64,6 +64,8 @@ public:
     virtual bool respondsTo(uint32_t address) const noexcept = 0;
     virtual void handleReadRequest(uint32_t baseAddress) noexcept = 0;
     virtual void handleWriteRequest(uint32_t baseAddress) noexcept = 0;
+    void handleReadRequest() noexcept;
+    void handleWriteRequest() noexcept;
     virtual uint32_t read(uint32_t address, uint16_t* value, uint32_t count) noexcept = 0;
     virtual uint32_t write(uint32_t address, uint16_t* value, uint32_t count) noexcept = 0;
 };
