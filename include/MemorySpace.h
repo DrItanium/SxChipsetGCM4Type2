@@ -153,7 +153,7 @@ protected:
 public:
     bool empty() const noexcept { return subSpaces_.empty(); }
     auto size() const noexcept { return subSpaces_.size(); }
-    /// @todo implement support for constructing child memory spaces relative to zero
+    /// @todo implement support for constructing child memory spaces relative to zero instead of absolute 32-bit addresses
     void emplace_back(MemorySpace::ObserverPtr targetPtr) noexcept { subSpaces_.emplace_back(targetPtr); }
     template<typename T>
     void emplace_back(T& targetPtr) noexcept { emplace_back(std::experimental::make_observer(&targetPtr)); }

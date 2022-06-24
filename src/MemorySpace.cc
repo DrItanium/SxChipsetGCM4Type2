@@ -92,7 +92,6 @@ MemorySpace::write(uint32_t address, uint16_t* value, uint32_t count) noexcept {
 uint32_t
 ContainerSpace::read(uint32_t address, uint16_t *value, uint32_t count) noexcept {
     /// @todo reimplement so that we can support spanning multiple sub memory spaces
-    auto relativeBaseAddress =
     return MemorySpace::read(address, value, count);
 }
 uint32_t
