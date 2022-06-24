@@ -60,7 +60,7 @@ MemorySpace::handleWriteRequest() noexcept {
 }
 
 uint32_t
-MemorySpace::read(uint32_t address, uint16_t* value, uint32_t count) noexcept {
+SizedMemorySpace::read(uint32_t address, uint16_t* value, uint32_t count) noexcept {
     auto relativeStartAddress = makeAddressRelative(address);
     auto relativeTotalEndAddress = makeAddressRelative(endAddress_);
     // okay so now that we have a relative address, we need to know how many bytes to walk through
@@ -75,7 +75,7 @@ MemorySpace::read(uint32_t address, uint16_t* value, uint32_t count) noexcept {
     return numRead;
 }
 uint32_t
-MemorySpace::write(uint32_t address, uint16_t* value, uint32_t count) noexcept {
+SizedMemorySpace::write(uint32_t address, uint16_t* value, uint32_t count) noexcept {
     auto relativeStartAddress = makeAddressRelative(address);
     auto relativeTotalEndAddress = makeAddressRelative(endAddress_);
     // okay so now that we have a relative address, we need to know how many bytes to walk through
@@ -97,4 +97,32 @@ ContainerSpace::read(uint32_t address, uint16_t *value, uint32_t count) noexcept
 uint32_t
 ContainerSpace::write(uint32_t address, uint16_t *value, uint32_t count) noexcept {
     return MemorySpace::write(address, value, count);
+}
+void
+MappedMemorySpace::write(uint32_t address, SplitWord16 value, LoadStoreStyle lss) noexcept {
+    ptr_->write(makeAddressRelative(address), value, lss);
+}
+uint16_t
+MappedMemorySpace::read(uint32_t address, LoadStoreStyle lss) const noexcept {
+    return ptr_->read(makeAddressRelative(address), lss);
+}
+bool
+MappedMemorySpace::respondsTo(uint32_t address) const noexcept {
+    return address >= baseAddress_ && ptr_->respondsTo(address);
+}
+void
+MappedMemorySpace::handleReadRequest(uint32_t addr) noexcept {
+    ptr_->handleReadRequest(makeAddressRelative(addr));
+}
+void
+MappedMemorySpace::handleWriteRequest(uint32_t addr) noexcept {
+    ptr_->handleWriteRequest(makeAddressRelative(addr));
+}
+uint32_t
+MappedMemorySpace::read(uint32_t address, uint16_t *value, uint32_t count) noexcept {
+    return ptr_->read(makeAddressRelative(address), value, count);
+}
+uint32_t
+MappedMemorySpace::write(uint32_t address, uint16_t *value, uint32_t count) noexcept {
+    return ptr_->write(makeAddressRelative(address), value, count);
 }

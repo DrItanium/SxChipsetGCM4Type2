@@ -30,12 +30,50 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <vector>
 #include <memory>
 #include <experimental/memory>
+#include <optional>
 /**
  * @brief Abstract representation of a memory space that can be accessed in a generic fashion; It has a base address (256-byte aligned) and consumes 1 or more pages!
+ * It assumes it is the only thing in its own 32-bit memory space, use mapping objects to connect it into a memory space. It assumes a base address of zero at all times!
  */
 class MemorySpace {
 public:
     using Self = MemorySpace;
+    using Ptr = std::experimental::observer_ptr<Self>;
+public:
+    MemorySpace() = default;
+    virtual ~MemorySpace() = default;
+    /**
+     * @brief Write a given value to memory
+     * @param address The address that we want to read from relative to the space's base address
+     * @param value The value to write
+     * @param lss The size of the value
+     */
+    virtual void write(uint32_t address, SplitWord16 value, LoadStoreStyle lss) noexcept = 0;
+    /**
+     * @brief Read a 16-bit value from this space relative to the base address
+     * @param address The address that we want to read from relative to this space's base address
+     * @param lss The size of the value to read
+     * @return The 16-bit value
+     */
+    [[nodiscard]] virtual uint16_t read(uint32_t address, LoadStoreStyle lss) const noexcept = 0;
+    /**
+     * @brief Used to determine if this memory space responds to a given memory request
+     * @param address The physical address to check for matching
+     * @return a boolean value signifying if this memory space responds to the given address or not
+     */
+    virtual bool respondsTo(uint32_t address) const noexcept = 0;
+    virtual void handleReadRequest(uint32_t baseAddress) noexcept = 0;
+    virtual void handleWriteRequest(uint32_t baseAddress) noexcept = 0;
+    virtual uint32_t read(uint32_t address, uint16_t* value, uint32_t count) noexcept = 0;
+    virtual uint32_t write(uint32_t address, uint16_t* value, uint32_t count) noexcept = 0;
+};
+/**
+ * @brief Abstract representation of a memory space that can be accessed in a generic fashion; It has a base address (256-byte aligned) and consumes 1 or more pages!
+ * It assumes it is the only thing in its own 32-bit memory space, use mapping objects to connect it into a memory space. It assumes a base address of zero at all times!
+ */
+class SizedMemorySpace : public MemorySpace {
+public:
+    using Self = SizedMemorySpace;
     using Ptr = std::shared_ptr<Self>;
     using ObserverPtr = std::experimental::observer_ptr<Self>;
     static constexpr uint32_t fixBaseAddress(uint32_t value) noexcept { return value & 0xFFFFFF00; }
@@ -46,68 +84,65 @@ public:
      * @param baseAddress The starting address (the lowest 8 bits will be cleared out)
      * @param numPages The number of 256-byte pages consumed by this memory space (at least 1)
      */
-    MemorySpace(uint32_t baseAddress, uint32_t numPages) :
-    baseAddress_(fixBaseAddress(baseAddress)),
-    endAddress_(baseAddress_ + (correctPageCount(numPages) << 8))
-    {
-
-    }
-    struct TreatAsAbsoluteAddress { };
-    struct TreatAsRelativeAddress { };
-    virtual ~MemorySpace() = default;
+    SizedMemorySpace(uint32_t numPages) : numPages_(correctPageCount(numPages)), endAddress_((numPages_ << 8)) { }
+    ~SizedMemorySpace() override = default;
     /**
      * @brief Write a given value to memory
      * @param address The address that we want to read from relative to the space's base address
      * @param value The value to write
      * @param lss The size of the value
      */
-    inline void write(uint32_t address, SplitWord16 value, LoadStoreStyle lss, TreatAsAbsoluteAddress) noexcept {
-        write(makeAddressRelative(address), value, lss, TreatAsRelativeAddress{});
-    }
-    virtual void write(uint32_t address, SplitWord16 value, LoadStoreStyle lss, TreatAsRelativeAddress) noexcept {
+    void write(uint32_t address, SplitWord16 value, LoadStoreStyle lss) noexcept override {
         // always operate on relative addresses
     }
-    void write(uint32_t address, uint16_t value, LoadStoreStyle style) noexcept { write(address, SplitWord16(value), style, TreatAsAbsoluteAddress{}); }
     /**
      * @brief Read a 16-bit value from this space relative to the base address
      * @param address The address that we want to read from relative to this space's base address
      * @param lss The size of the value to read
      * @return The 16-bit value
      */
-    [[nodiscard]] virtual uint16_t read(uint32_t address, LoadStoreStyle lss, TreatAsRelativeAddress) const noexcept {
+    [[nodiscard]] uint16_t read(uint32_t address, LoadStoreStyle lss) const noexcept override {
         return 0;
     }
 
-    [[nodiscard]] inline uint16_t read(uint32_t address, LoadStoreStyle lss, TreatAsAbsoluteAddress) const noexcept { return read(makeAddressRelative(address), lss, TreatAsRelativeAddress{}); }
-    [[nodiscard]] inline uint16_t read(uint32_t address, LoadStoreStyle lss) const noexcept { return read(address, lss, TreatAsAbsoluteAddress{}); }
     /**
      * @brief Used to determine if this memory space responds to a given memory request
      * @param address The physical address to check for matching
      * @return a boolean value signifying if this memory space responds to the given address or not
      */
-    virtual bool respondsTo(uint32_t address) const noexcept {
-        return address >= baseAddress_ && address < endAddress_;
+    bool respondsTo(uint32_t address) const noexcept override {
+        return address < endAddress_;
     }
 
-    [[nodiscard]] constexpr auto getNumberOfPages() const noexcept { return (endAddress_ - baseAddress_) >> 8; }
-    [[nodiscard]] constexpr auto getBaseAddress() const noexcept { return baseAddress_; }
+    [[nodiscard]] constexpr auto getNumberOfPages() const noexcept { return endAddress_ >> 8; }
     [[nodiscard]] constexpr auto getEndAddress() const noexcept { return endAddress_; }
-    virtual void handleReadRequest() noexcept;
-    virtual void handleWriteRequest() noexcept;
-    /**
-     * @brief Convert an absolute address into one that is relative to the current memory space
-     * @param absoluteAddress The absolute address
-     * @return The address relative to the starting position
-     */
-    virtual uint32_t makeAddressRelative(uint32_t absoluteAddress) const noexcept {
-        return absoluteAddress - baseAddress_;
-    }
-    virtual uint32_t read(uint32_t address, uint16_t* value, uint32_t count) noexcept;
-    virtual uint32_t write(uint32_t address, uint16_t* value, uint32_t count) noexcept;
-    /// @todo implement block read/write support
+    void handleReadRequest(uint32_t baseAddress) noexcept override;
+    void handleWriteRequest(uint32_t baseAddress) noexcept override;
+    uint32_t read(uint32_t address, uint16_t* value, uint32_t count) noexcept override;
+    uint32_t write(uint32_t address, uint16_t* value, uint32_t count) noexcept override;
+private:
+    uint32_t numPages_;
+    uint32_t endAddress_;
+};
+
+class MappedMemorySpace : public MemorySpace {
+public:
+    explicit MappedMemorySpace(uint32_t baseAddress, MemorySpace::Ptr& ptr) : baseAddress_(baseAddress), ptr_(ptr) { }
+    ~MappedMemorySpace() override = default;
+    void write(uint32_t address, SplitWord16 value, LoadStoreStyle lss) noexcept override;
+    uint16_t read(uint32_t address, LoadStoreStyle lss) const noexcept override;
+    bool respondsTo(uint32_t address) const noexcept override;
+    void handleReadRequest(uint32_t baseAddress) noexcept override;
+    void handleWriteRequest(uint32_t baseAddress) noexcept override;
+    uint32_t read(uint32_t address, uint16_t *value, uint32_t count) noexcept override;
+    uint32_t write(uint32_t address, uint16_t *value, uint32_t count) noexcept override;
+private:
+    [[nodiscard]] constexpr uint32_t makeAddressRelative(uint32_t absoluteAddress) const noexcept { return absoluteAddress - baseAddress_; }
 private:
     uint32_t baseAddress_;
-    uint32_t endAddress_;
+    MemorySpace::Ptr& ptr_;
+
+
 };
 
 /**
@@ -151,12 +186,26 @@ protected:
         return nullptr;
     }
 public:
-    bool empty() const noexcept { return subSpaces_.empty(); }
-    auto size() const noexcept { return subSpaces_.size(); }
-    /// @todo implement support for constructing child memory spaces relative to zero instead of absolute 32-bit addresses
-    void emplace_back(MemorySpace::ObserverPtr targetPtr) noexcept { subSpaces_.emplace_back(targetPtr); }
+    [[nodiscard]] bool empty() const noexcept { return subSpaces_.empty(); }
+    [[nodiscard]] auto size() const noexcept { return subSpaces_.size(); }
+    [[nodiscard]] bool emplace_back(MemorySpace::ObserverPtr targetPtr) noexcept {
+        if (auto oldBaseAddress = targetPtr->getBaseAddress(), newRelativeAddress  = makeAddressRelative(oldBaseAddress); targetPtr->setBaseAddress(newRelativeAddress)) {
+            // so updated base address was successful but we are not sure if the target item will fit within the memory space
+            if (targetPtr->getEndAddress() > getEndAddress()) {
+                // okay we've overflowed, restore
+                (void)targetPtr->setBaseAddress(oldBaseAddress);
+                return false;
+            } else {
+                // the remapping was successful so add it to the list
+                subSpaces_.emplace_back(targetPtr);
+                return true;
+            }
+        }
+        // We overflowed memory in general so return false
+        return false;
+    }
     template<typename T>
-    void emplace_back(T& targetPtr) noexcept { emplace_back(std::experimental::make_observer(&targetPtr)); }
+    [[nodiscard]] bool emplace_back(T& targetPtr) noexcept { return emplace_back(std::experimental::make_observer(&targetPtr)); }
 private:
     // yes mutable is gross but I have an interface to satisfy
     std::vector<ObserverPtr> subSpaces_;
@@ -168,6 +217,15 @@ public:
     using Ptr = std::shared_ptr<Self>;
 public:
     CompleteMemorySpace() : Parent(0, 0x00FFFFFF) { }
-    bool respondsTo(uint32_t address) const noexcept override { return true; }
+    [[nodiscard]] bool respondsTo(uint32_t address) const noexcept override { return true; }
+    [[nodiscard]] uint32_t makeAddressRelative(uint32_t absoluteAddress) const noexcept override { return absoluteAddress; }
+};
+
+/**
+ * @brief Wrapper class around another memory space used to allow proper responsive
+ */
+class MappedMemorySpace : public MemorySpace {
+public:
+
 };
 #endif //SXCHIPSETGCM4TYPE2_MEMORYSPACE_H
