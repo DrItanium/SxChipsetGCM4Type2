@@ -202,3 +202,21 @@ MappedMemorySpace::Ptr
 map(const MemorySpace::Ptr& previousSpace, MemorySpace& space) noexcept {
     return map(previousSpace->getEndAddress(), space);
 }
+
+void
+MemorySpace::write(uint32_t address, SplitWord16 value, LoadStoreStyle lss) noexcept {
+    switch (lss)  {
+        case LoadStoreStyle::Full16:
+            write16(address, value.getWholeValue());
+            break;
+        case LoadStoreStyle::Upper8:
+            write8(address + 1, value.getUpperHalf());
+            break;
+        case LoadStoreStyle::Lower8:
+            write8(address, value.getLowerHalf());
+            break;
+        default:
+            break;
+    }
+}
+

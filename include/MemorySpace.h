@@ -41,13 +41,21 @@ public:
     using Ptr = std::shared_ptr<Self>;
 public:
     virtual ~MemorySpace() = default;
+protected:
+    virtual void write8(uint32_t address, uint8_t value) noexcept = 0;
+    virtual void write16(uint32_t address, uint16_t value) noexcept = 0;
+public:
     /**
      * @brief Write a given value to memory
      * @param address The address that we want to read from relative to the space's base address
      * @param value The value to write
      * @param lss The size of the value
      */
-    virtual void write(uint32_t address, SplitWord16 value, LoadStoreStyle lss) noexcept = 0;
+    virtual void write(uint32_t address, SplitWord16 value, LoadStoreStyle lss) noexcept;
+protected:
+    virtual uint8_t read8(uint32_t address) const noexcept = 0;
+    virtual uint16_t read16(uint32_t address) const noexcept = 0;
+public:
     /**
      * @brief Read a 16-bit value from this space relative to the base address
      * @param address The address that we want to read from relative to this space's base address
