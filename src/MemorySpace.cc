@@ -137,7 +137,7 @@ MemorySpace::handleWriteRequest(uint32_t baseAddress) noexcept {
         container.setLowerWord(ProcessorInterface::getDataBits());
         auto style0 = ProcessorInterface::getStyle();
         if (ManagementEngine::informCPU()) {
-            dispatchWriteRequest16(address, style0, container.getLowerWord()));
+            dispatchWriteRequest16(address, style0, container.getLowerWord());
             break;
         }
         ManagementEngine::waitForCycleUnlock();
@@ -150,10 +150,8 @@ MemorySpace::handleWriteRequest(uint32_t baseAddress) noexcept {
 
     }
 }
-#if 0
-
 uint32_t
-SizedMemorySpace::read(uint32_t address, uint16_t* value, uint32_t count) noexcept {
+SizedMemorySpace::read(uint32_t address, uint8_t *value, uint32_t count) noexcept {
     auto relativeStartAddress = address;
     auto relativeTotalEndAddress = endAddress_;
     // okay so now that we have a relative address, we need to know how many bytes to walk through
@@ -162,13 +160,14 @@ SizedMemorySpace::read(uint32_t address, uint16_t* value, uint32_t count) noexce
         relativeEndAddress = relativeTotalEndAddress;
     }
     uint32_t numRead = 0;
-    for (auto i = relativeStartAddress; i < relativeEndAddress; i+=sizeof(uint16_t), ++numRead, ++value) {
-        *value = read(i, LoadStoreStyle::Full16);
+    for (auto i = relativeStartAddress; i < relativeEndAddress; ++i, ++numRead, ++value) {
+        *value = read8(i);
     }
     return numRead;
 }
+
 uint32_t
-SizedMemorySpace::write(uint32_t address, uint16_t* value, uint32_t count) noexcept {
+SizedMemorySpace::write(uint32_t address, uint8_t *value, uint32_t count) noexcept {
     auto relativeStartAddress = address;
     auto relativeTotalEndAddress = endAddress_;
     // okay so now that we have a relative address, we need to know how many bytes to walk through
@@ -177,11 +176,13 @@ SizedMemorySpace::write(uint32_t address, uint16_t* value, uint32_t count) noexc
         relativeEndAddress = relativeTotalEndAddress;
     }
     uint32_t numWritten = 0;
-    for (auto i = relativeStartAddress; i < relativeEndAddress; i+=sizeof(uint16_t), ++numWritten, ++value) {
-        write(i, SplitWord16{*value}, LoadStoreStyle::Full16);
+    for (auto i = relativeStartAddress; i < relativeEndAddress; ++i, ++numWritten, ++value) {
+        write8(i, *value);
     }
     return numWritten;
 }
+#if 0
+
 void
 MappedMemorySpace::write(uint32_t address, SplitWord16 value, LoadStoreStyle lss) noexcept {
     ptr_.write(makeAddressRelative(address), value, lss);

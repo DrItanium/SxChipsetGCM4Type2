@@ -61,6 +61,14 @@ public:
      */
     virtual void write32(uint32_t address, uint32_t value) noexcept { }
     /**
+     * @brief Special 8-bit read implementation for block read and write operations
+     * @param address The address to read from
+     * @return the 8-bit value stored at the given address
+     */
+    virtual uint8_t read8(uint32_t address) noexcept {
+        return 0;
+    }
+    /**
      * @brief Read and return a 16-bit value given a basic address
      * @param address the 32-bit address to read from
      * @return The 16-bit found at the target address
@@ -124,10 +132,8 @@ public:
 
     [[nodiscard]] constexpr auto getNumberOfPages() const noexcept { return endAddress_ >> 8; }
     [[nodiscard]] uint32_t getEndAddress() const noexcept override { return endAddress_; }
-#if 0
-    uint32_t read(uint32_t address, uint16_t* value, uint32_t count) noexcept override;
-    uint32_t write(uint32_t address, uint16_t* value, uint32_t count) noexcept override;
-#endif
+    uint32_t read(uint32_t address, uint8_t* value, uint32_t count) noexcept override;
+    uint32_t write(uint32_t address, uint8_t* value, uint32_t count) noexcept override;
 private:
     uint32_t numPages_;
     uint32_t endAddress_;
@@ -166,13 +172,9 @@ public:
     using Self = ContainerMemorySpace;
 public:
     ~ContainerMemorySpace() override = default;
-    void write(uint32_t address, SplitWord16 value, LoadStoreStyle lss) noexcept override;
-    uint16_t read(uint32_t address, LoadStoreStyle lss) const noexcept override;
     bool respondsTo(uint32_t address) const noexcept override;
     void handleReadRequest(uint32_t baseAddress) noexcept override;
     void handleWriteRequest(uint32_t baseAddress) noexcept override;
-    uint32_t read(uint32_t address, uint16_t *value, uint32_t count) noexcept override;
-    uint32_t write(uint32_t address, uint16_t *value, uint32_t count) noexcept override;
     void emplace_back(const Parent::Ptr& target) noexcept { children_.emplace_back(target); }
 private:
     Parent::Ptr find(uint32_t address) noexcept;
