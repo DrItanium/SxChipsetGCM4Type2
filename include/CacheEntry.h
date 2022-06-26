@@ -87,6 +87,11 @@ private:
         signalHaltState(F("BAD LOAD STORE STYLE FOR SETTING A CACHE LINE"));
     }
 public:
+    inline void set32(OffsetType offset, LoadStoreStyle32 style, const SplitWord32& value) noexcept {
+        auto [lo, hi] = convert32To16(style);
+        set(offset, lo, value.getLowerWord());
+        set(offset + 1, hi, value.getUpperWord());
+    }
     inline void set(OffsetType offset, LoadStoreStyle style, const SplitWord16& value) noexcept {
         // while unsafe, assume it is correct because we only get this from the ProcessorSerializer, perhaps directly grab it?
         if (auto &target = data[offset]; target.getWholeValue() != value.getWholeValue()) {

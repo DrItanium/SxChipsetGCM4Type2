@@ -27,6 +27,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #define ARDUINO_PINOUT_H
 #include <Arduino.h>
 #include "MCUPlatform.h"
+#include <tuple>
 using Address = uint32_t;
 /**
  * @brief Sx Load/Store styles that the processor will request
@@ -70,6 +71,10 @@ constexpr LoadStoreStyle32 convert16To32(LoadStoreStyle lower, LoadStoreStyle up
     auto lowerHalf = static_cast<uint8_t>(lower);
     auto upperHalf = static_cast<uint8_t>(upper) << 2;
     return static_cast<LoadStoreStyle32>((lowerHalf | upperHalf) & 0b1111);
+}
+constexpr std::tuple<LoadStoreStyle, LoadStoreStyle> convert32To16(LoadStoreStyle32 value) noexcept {
+    return std::make_tuple(static_cast<LoadStoreStyle>(static_cast<uint8_t>(value) & 0b11),
+                           static_cast<LoadStoreStyle>((static_cast<uint8_t>(value) >> 2) & 0b11));
 }
 
 enum class i960Pinout : int {

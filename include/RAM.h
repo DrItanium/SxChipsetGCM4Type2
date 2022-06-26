@@ -55,41 +55,9 @@ public:
     }
     ~RAM() override = default;
 protected:
-private:
-#if 0
-    void write(uint32_t address, SplitWord16 value, LoadStoreStyle lss) noexcept override {
-        auto& line = theCache_.getLine(TaggedAddress{address});
-        line.set(ProcessorInterface::getCacheOffsetEntry<Cache_t::CacheEntryMask>(SplitWord32{address}),
-                 lss,
-                 value);
-    }
-
-    [[nodiscard]]
-    uint16_t
-    read(uint32_t address, LoadStoreStyle lss) const noexcept override {
-        return theCache_.getLine(TaggedAddress{address}).get(ProcessorInterface::getCacheOffsetEntry<Cache_t::CacheEntryMask>(SplitWord32{address}));
-    }
-#endif
 public:
-    void write8(uint32_t address, uint8_t value) noexcept override {
-        TaggedAddress addr{address};
-        auto& theLine = theCache_.getLine(addr);
-    }
-    void write16(uint32_t address, uint16_t value) noexcept override {
-        MemorySpace::write16(address, value);
-    }
-    void write32(uint32_t address, uint32_t value) noexcept override {
-        MemorySpace::write32(address, value);
-    }
-    uint8_t read8(uint32_t address) const noexcept override {
-        return MemorySpace::read8(address);
-    }
-    uint16_t read16(uint32_t address) const noexcept override {
-        return MemorySpace::read16(address);
-    }
-    uint32_t read32(uint32_t address) const noexcept override {
-        return MemorySpace::read32(address);
-    }
+    /// @todo implement the read/write 8,16,32 routines at some point
+    /// @todo implement custom routines for read and write block
 public:
     void
     handleReadRequest(uint32_t baseAddress) noexcept override {
@@ -98,16 +66,22 @@ public:
         auto& theEntry = theCache_.getLine(TaggedAddress{baseAddress});
         // when dealing with read operations, we can actually easily unroll the do while by starting at the cache offset entry and walking
         // forward until we either hit the end of the cache line or blast is asserted first (both are valid states)
-        for (auto i = start; i < end; ++i) {
+        for (auto i = start; i < end; i+=2) {
             // start working on getting the given value way ahead of cycle unlock happening
             ManagementEngine::waitForCycleUnlock();
-            ProcessorInterface::setDataBits(theEntry.get(i));
+            // load 32-bits at a time from the cache
+            /// @todo should we care if we are the last word in a cache line which is always a multiple of 16 so also aligned to 16-byte boundaries? Is corruption of the other word okay
+            SplitWord32 theWord{theEntry.get(i), theEntry.get(i+1)};
+            ProcessorInterface::setDataBits(theWord.getLowerHalf());
             // Only pay for what we need even if it is slower
             if (ManagementEngine::informCPU()) {
                 break;
             }
-            // so if I don't increment the address, I think we run too fast xD based on some experimentation
-            ProcessorInterface::burstNext<false>();
+            ManagementEngine::waitForCycleUnlock();
+            ProcessorInterface::setDataBits(theWord.getUpperHalf());
+            if (ManagementEngine::informCPU()) {
+                break;
+            }
         }
     }
     void handleWriteRequest(uint32_t baseAddress) noexcept override {
@@ -119,17 +93,22 @@ public:
         // far as we can go with how the Sx works!
 
         // Also the manual states that the processor cannot burst across 16-byte boundaries so :D.
-        for (auto i = start; i < end; ++i) {
+        for (auto i = start; i < end; i+=2) {
             ManagementEngine::waitForCycleUnlock();
-            theEntry.set(i, ProcessorInterface::getStyle(),
-                         ProcessorInterface::getDataBits());
+            SplitWord32 theWord{0};
+            theWord.setLowerWord(ProcessorInterface::getDataBits());
+            auto style0 = ProcessorInterface::getStyle();
+            if (ManagementEngine::informCPU()) {
+                theEntry.set(i, style0, theWord.getLowerWord());
+                break;
+            }
+            ManagementEngine::waitForCycleUnlock();
+            theWord.setUpperWord(ProcessorInterface::getDataBits());
+            auto style1 = ProcessorInterface::getStyle();
+            theEntry.set32(i + 1, convert16To32(style0, style1), theWord);
             if (ManagementEngine::informCPU()) {
                 break;
             }
-            // the manual doesn't state that the burst transaction will always have BE0 and BE1 pulled low and this is very true, you must
-            // check the pins because it will do unaligned burst transactions but even that will never span multiple 16-byte entries
-            // so if I don't increment the address, I think we run too fast xD based on some experimentation
-            ProcessorInterface::burstNext<false>();
         }
     }
     byte* viewCacheAsStorage() noexcept { return theCache_.viewAsStorage(); }
