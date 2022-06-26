@@ -23,27 +23,6 @@ ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 #include "ProcessorSerializer.h"
-
-void
-ProcessorInterface::setupDataLinesForWrite() noexcept {
-    static constexpr uint32_t PortDirectionMask = 0x0003FCFF;
-    static constexpr uint32_t InvertPortDirectionMask = ~PortDirectionMask;
-    auto portDirection = DigitalPin<i960Pinout::Data0>::readPortDir();
-    portDirection &= InvertPortDirectionMask;
-    DigitalPin<i960Pinout::Data0>::writePortDir(portDirection);
-}
-void
-ProcessorInterface::setupDataLinesForRead() noexcept {
-    static constexpr uint32_t PortDirectionMask = 0x0003FCFF;
-    static constexpr uint32_t InvertPortDirectionMask = ~PortDirectionMask;
-    auto portDirection = DigitalPin<i960Pinout::Data0>::readPortDir();
-    portDirection &= InvertPortDirectionMask;
-    DigitalPin<i960Pinout::Data0>::writePortDir(portDirection | PortDirectionMask);
-}
-bool
-ProcessorInterface::isReadOperation() noexcept {
-    return !isWriteOperation_;
-}
 namespace
 {
     union DataLines
@@ -58,19 +37,53 @@ namespace
             uint32_t rest: 14;
         };
         uint16_t halves[2];
-        constexpr auto getValue32() const noexcept { return value; }
-        constexpr auto getLowerHalf() const noexcept { return halves[0]; }
-        constexpr auto getUpperHalf() const noexcept { return halves[1]; }
+        [[nodiscard]] constexpr auto getValue32() const noexcept { return value; }
+        [[nodiscard]] constexpr auto getLowerHalf() const noexcept { return halves[0]; }
+        [[nodiscard]] constexpr auto getUpperHalf() const noexcept { return halves[1]; }
         explicit DataLines(uint32_t value) : value(value) {}
         explicit DataLines(uint16_t lower, uint16_t upper = 0) : halves{lower, upper} { }
     };
+    union MuxLines {
+        uint32_t value;
+        struct {
+            uint32_t unused0 : 12;
+            uint32_t muxIndex : 3;
+            uint32_t enable : 1;
+            uint32_t data : 8;
+            uint32_t unused1 : 8;
+        };
+        explicit MuxLines(uint32_t value) : value(value) { }
 
+    };
+
+}
+void
+ProcessorInterface::setupDataLinesForWrite() noexcept {
+    // writes are inputs since the processor is writing to the chipset
+    DataLines directionContents( DigitalPin<i960Pinout::Data0>::readPortDir());
+    directionContents.layout89 = 0;
+    directionContents.lowerPart = 0;
+    directionContents.upperPartRest = 0;
+    DigitalPin<i960Pinout::Data0>::writePortDir(directionContents.getValue32());
+}
+void
+ProcessorInterface::setupDataLinesForRead() noexcept {
+    // reads are outputs since the processor is reading from the chipset
+    DataLines directionContents( DigitalPin<i960Pinout::Data0>::readPortDir());
+    directionContents.layout89 = 0b11;
+    directionContents.lowerPart = 0xFF;
+    directionContents.upperPartRest = 0b111'111;
+    DigitalPin<i960Pinout::Data0>::writePortDir(directionContents.getValue32());
+}
+bool
+ProcessorInterface::isReadOperation() noexcept {
+    return !isWriteOperation_;
 }
 SplitWord16
 ProcessorInterface::getDataBits() noexcept {
     DataLines tmp(DigitalPin<i960Pinout::Data0>::readInPort());
     tmp.real89 = tmp.layout89;
-    return SplitWord16{tmp.halves[0]};
+    return SplitWord16{tmp.getLowerHalf()};
 }
 void
 ProcessorInterface::setDataBits(uint16_t value) noexcept {
@@ -87,13 +100,15 @@ ProcessorInterface::begin() noexcept {
 template<uint8_t pattern>
 uint8_t
 readMuxPort() noexcept {
-    digitalWrite<i960Pinout::MUXSel0, pattern & 0b001 ? HIGH : LOW>();
-    digitalWrite<i960Pinout::MUXSel1, pattern & 0b010 ? HIGH : LOW>();
-    digitalWrite<i960Pinout::MUXSel2, pattern & 0b100 ? HIGH : LOW>();
-    digitalWrite<i960Pinout::MUX_EN, LOW>();
-    auto value = static_cast<uint8_t>(DigitalPin<i960Pinout::MUXADR0>::readInPort() >> 16);
+    MuxLines outCtl(DigitalPin<i960Pinout::MUXSel0>::readOutPort());
+    outCtl.muxIndex = pattern;
+    outCtl.enable = 0;
+    DigitalPin<i960Pinout::MUXADR0>::writeOutPort(outCtl.value);
+    outCtl.enable = 1;
+    MuxLines inCtl(DigitalPin<i960Pinout::MUXADR0>::readInPort());
+    DigitalPin<i960Pinout::MUXADR0>::writeOutPort(outCtl.value);
     digitalWrite<i960Pinout::MUX_EN, HIGH>();
-    return value;
+    return inCtl.data;
 }
 void
 ProcessorInterface::newAddress() noexcept {
