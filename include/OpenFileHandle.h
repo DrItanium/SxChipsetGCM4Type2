@@ -30,12 +30,14 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #define SXCHIPSET_OPENFILEHANDLE_H
 #include "Pinout.h"
 #include <SdFat.h>
+#include "MemorySpace.h"
+#include "SinglePageMemorySpace.h"
 extern SdFat SD;
 
 /**
  * @brief A wrapper class around an sdfat file that exposes further functionality for the chipset to expose to the i960 via memory mapping
  */
-class OpenFileHandle {
+class OpenFileHandle : public SinglePageMemorySpace {
 public:
     enum class Registers : uint8_t {
 
@@ -122,72 +124,69 @@ public:
     void sync() noexcept { backingStore_.sync(); }
     bool isBusy() noexcept { return backingStore_.isBusy(); }
     bool isDirectory() noexcept { return backingStore_.isDirectory(); }
-    uint16_t getChar() noexcept {
+    uint16_t getChar() const noexcept {
         if (backingStore_) {
             return static_cast<uint16_t>(backingStore_.read());
         } else {
             return -1;
         }
     }
-    void putChar(SplitWord16 value) noexcept {
+    void putChar(uint16_t value) noexcept {
         if (backingStore_) {
-            backingStore_.write(static_cast<byte>(value.getWholeValue()));
+            backingStore_.write(static_cast<byte>(value));
         }
     }
     [[nodiscard]] size_t read(void* buf, size_t count) noexcept { return backingStore_.read(buf, count); }
     [[nodiscard]] size_t write(void* buf, size_t count) noexcept { return backingStore_.write(buf, count); }
-    [[nodiscard]] uint16_t read(uint8_t offset, LoadStoreStyle lss) noexcept {
+    void
+    write16(uint32_t address, uint16_t value) noexcept override {
         using T = Registers;
-        switch (static_cast<T>(offset)) {
-            case T::IOPort: return getChar();
-            case T::IsOpen: return isOpen() ? 0xFFFF : 0;
-            case T::SizeLower: return static_cast<uint16_t>(size());
-            case T::SizeUpper: return static_cast<uint16_t>(size() >> 16);
-            case T::Permissions: return permissions_;
-            case T::ErrorCode: return getError();
-            case T::WriteError: return getWriteError();
-            default: return 0;
-        }
-    }
-    void write(uint8_t offset, LoadStoreStyle lss, SplitWord16 value) noexcept {
-        using T = Registers;
-        bool callSeekAbsolute = false;
-        bool callSeekRelative = false;
-        switch(static_cast<T>(offset)) {
+        switch(static_cast<T>(static_cast<uint8_t>(address))) {
             case T::Close: close(); break;
             case T::IOPort: putChar(value); break;
             case T::Sync: sync(); break;
             case T::Flush: flush(); break;
             case T::SeekBeginning: seekToBeginning(); break;
             case T::SeekEnd: seekToEnd(); break;
+            default: break;
+        }
+    }
+    void
+    write32(uint32_t address, uint32_t value) noexcept override {
+        using T = Registers;
+        switch(static_cast<T>(static_cast<uint8_t>(address))) {
             case T::SeekAbsoluteLower:
-                seekAbsoluteTemporary_.words_[0] = value;
-                break;
-            case T::SeekAbsoluteUpper:
-                callSeekAbsolute = true;
-                seekAbsoluteTemporary_.words_[1] = value;
+                setAbsolutePosition(value);
                 break;
             case T::SeekRelativeLower:
-                seekRelativeTemporary_.words_[0] = value;
-                break;
-            case T::SeekRelativeUpper:
-                callSeekRelative = true;
-                seekRelativeTemporary_.words_[1] = value;
+                setRelativePosition(static_cast<int32_t>(value));
                 break;
             default:
                 break;
         }
-        if (callSeekAbsolute) {
-            setAbsolutePosition(seekAbsoluteTemporary_.getWholeValue());
+    }
+    uint16_t
+    read16(uint32_t address) const noexcept override {
+        using T = Registers;
+        switch (static_cast<T>(static_cast<uint8_t>(address))) {
+            case T::IOPort: return getChar();
+            case T::IsOpen: return isOpen() ? 0xFFFF : 0;
+            case T::Permissions: return permissions_;
+            case T::ErrorCode: return getError();
+            case T::WriteError: return getWriteError();
+            default: return 0;
         }
-        if (callSeekRelative) {
-            setRelativePosition(seekRelativeTemporary_.getSignedRepresentation());
+    }
+    uint32_t
+    read32(uint32_t address) const noexcept override {
+        using T = Registers;
+        switch (static_cast<T>(static_cast<uint8_t>(address))) {
+            case T::SizeLower: return size();
+            default: return 0;
         }
     }
 private:
-    File backingStore_;
-    SplitWord32 seekAbsoluteTemporary_{0};
-    SplitWord32 seekRelativeTemporary_{0};
+    mutable File backingStore_;
     uint16_t permissions_ = 0;
 };
 

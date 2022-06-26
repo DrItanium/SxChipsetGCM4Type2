@@ -43,7 +43,6 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "CoreChipsetFeatures.h"
 #include "SDCardAsRam.h"
 #include "TaggedCacheAddress.h"
-#include "RTCInterface.h"
 #include "i960SxChipset.h"
 #include <type_traits>
 #include "ManagementEngine.h"
@@ -67,7 +66,6 @@ constexpr auto UseIOExpanderAddressLineInterrupts = TargetBoard::useIOExpanderAd
 using TheSDInterface = SDCardInterface<MaximumNumberOfOpenFiles, SDBaseAddress>;
 //using TheConsoleInterface = Serial0Interface<Serial0BaseAddress, CompileInAddressDebuggingSupport, AddressDebuggingEnabledOnStartup>;
 using UART0Interface = Serial0Interface;
-using TheRTCInterface = RTCInterface<RTCBaseAddress>;
 using ConfigurationSpace = CoreChipsetFeatures;
 // define the backing memory storage classes via template specialization
 // at this point in time, if no specialization is performed, use SDCard as ram backend
