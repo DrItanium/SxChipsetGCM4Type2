@@ -326,8 +326,15 @@ union SplitWord32 {
     [[nodiscard]] constexpr auto getMostSignificantByte() const noexcept { return static_cast<byte>(wholeValue_ >> 24); }
     [[nodiscard]] constexpr auto getLowerHalf() const noexcept { return halves[0]; }
     [[nodiscard]] constexpr auto getUpperHalf() const noexcept { return halves[1]; }
-    void setLowerHalf(SplitWord16 value) noexcept { words_[0] = value; }
-    void setUpperHalf(SplitWord16 value) noexcept { words_[1] = value; }
+    [[nodiscard]] constexpr const auto& getLowerWord() const noexcept { return words_[0]; }
+    [[nodiscard]] constexpr const auto& getUpperWord() const noexcept { return words_[1]; }
+    [[nodiscard]] auto& getLowerWord() noexcept { return words_[0]; }
+    [[nodiscard]] auto& getUpperWord() noexcept { return words_[1]; }
+    void setLowerWord(SplitWord16 value) noexcept { words_[0] = value; }
+    void setUpperWord(SplitWord16 value) noexcept { words_[1] = value; }
+    void setLowerHalf(uint16_t value) noexcept { halves[0] = value; }
+    void setUpperHalf(uint16_t value) noexcept { halves[1] = value; }
+    void setWholeValue(uint32_t value) noexcept { wholeValue_ = value; }
     uint32_t wholeValue_ = 0;
     int32_t signedRepresentation_;
     byte bytes[sizeof(uint32_t)];

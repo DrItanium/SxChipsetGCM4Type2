@@ -90,6 +90,9 @@ public:
     virtual uint32_t write(uint32_t address, uint8_t* value, uint32_t count) noexcept = 0;
     virtual uint32_t getBaseAddress() const noexcept { return 0; }
     virtual uint32_t getEndAddress() const noexcept = 0;
+protected:
+    void dispatchWriteRequest16(uint32_t address, LoadStoreStyle style, const SplitWord16& value) noexcept;
+    void dispatchWriteRequest32(uint32_t address, LoadStoreStyle style, LoadStoreStyle style2, const SplitWord32& value) noexcept;
 };
 /**
  * @brief Abstract representation of a memory space that can be accessed in a generic fashion; It has a base address (256-byte aligned) and consumes 1 or more pages!
@@ -121,8 +124,10 @@ public:
 
     [[nodiscard]] constexpr auto getNumberOfPages() const noexcept { return endAddress_ >> 8; }
     [[nodiscard]] uint32_t getEndAddress() const noexcept override { return endAddress_; }
+#if 0
     uint32_t read(uint32_t address, uint16_t* value, uint32_t count) noexcept override;
     uint32_t write(uint32_t address, uint16_t* value, uint32_t count) noexcept override;
+#endif
 private:
     uint32_t numPages_;
     uint32_t endAddress_;

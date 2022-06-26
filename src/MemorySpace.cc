@@ -35,26 +35,53 @@ MemorySpace::handleReadRequest(uint32_t baseAddress) noexcept {
     for (auto address = baseAddress; ;address += 2) {
         // wait for
         ManagementEngine::waitForCycleUnlock();
-        ProcessorInterface::setDataBits(read(address,
-                                             ProcessorInterface::getStyle()));
+        SplitWord32 container{0};
+        if (ManagementEngine::isLastCycleOfTransaction()) {
+            container.setLowerHalf(read16(address));
+        } else {
+            container.setWholeValue(read32(address));
+        }
+        ProcessorInterface::setDataBits(container.getLowerHalf());
+        if (ManagementEngine::informCPU()) {
+            break;
+        }
+        ManagementEngine::waitForCycleUnlock();
+        ProcessorInterface::setDataBits(container.getUpperHalf());
         if (ManagementEngine::informCPU()) {
             break;
         }
     }
 }
+void
+MemorySpace::dispatchWriteRequest16(uint32_t address, LoadStoreStyle style, const SplitWord16& value) noexcept {
 
+}
+void
+MemorySpace::dispatchWriteRequest32(uint32_t address, LoadStoreStyle style, LoadStoreStyle style2, const SplitWord32 &value) noexcept {
+
+}
 void
 MemorySpace::handleWriteRequest(uint32_t baseAddress) noexcept {
     for (auto address = baseAddress; ; address += 2) {
         ManagementEngine::waitForCycleUnlock();
-        write(address,
-              ProcessorInterface::getDataBits(),
-              ProcessorInterface::getStyle());
+        SplitWord32 container{0};
+        container.setLowerWord(ProcessorInterface::getDataBits());
+        auto style0 = ProcessorInterface::getStyle();
+        if (ManagementEngine::informCPU()) {
+            dispatchWriteRequest16(address, style0, container.getLowerWord()));
+            break;
+        }
+        ManagementEngine::waitForCycleUnlock();
+        container.setUpperWord(ProcessorInterface::getDataBits());
+        auto style1 = ProcessorInterface::getStyle();
+        dispatchWriteRequest32(address, style0, style1, container);
         if (ManagementEngine::informCPU()) {
             break;
         }
+
     }
 }
+#if 0
 
 uint32_t
 SizedMemorySpace::read(uint32_t address, uint16_t* value, uint32_t count) noexcept {
@@ -94,6 +121,7 @@ uint16_t
 MappedMemorySpace::read(uint32_t address, LoadStoreStyle lss) const noexcept {
     return ptr_.read(makeAddressRelative(address), lss);
 }
+#endif
 bool
 MappedMemorySpace::respondsTo(uint32_t address) const noexcept {
     return address >= baseAddress_ && ptr_.respondsTo(address);
@@ -134,6 +162,7 @@ uint32_t
 MappedMemorySpace::write(uint32_t address, uint8_t *value, uint32_t count) noexcept {
     return 0;
 }
+#if 0
 uint32_t
 MappedMemorySpace::read(uint32_t address, uint16_t *value, uint32_t count) noexcept {
     return ptr_.read(makeAddressRelative(address), value, count);
@@ -142,6 +171,7 @@ uint32_t
 MappedMemorySpace::write(uint32_t address, uint16_t *value, uint32_t count) noexcept {
     return ptr_.write(makeAddressRelative(address), value, count);
 }
+#endif
 
 void
 MemorySpace::handleWriteRequest() noexcept {
@@ -151,7 +181,7 @@ void
 MemorySpace::handleReadRequest() noexcept {
     handleReadRequest(ProcessorInterface::getAddress());
 }
-
+#if 0
 void
 ContainerMemorySpace::write(uint32_t address, SplitWord16 value, LoadStoreStyle lss) noexcept {
     if (auto result = find(address); result) {
@@ -165,6 +195,7 @@ ContainerMemorySpace::read(uint32_t address, LoadStoreStyle lss) const noexcept 
     }
     return 0;
 }
+#endif
 bool
 ContainerMemorySpace::respondsTo(uint32_t address) const noexcept {
     return find(address) != nullptr;
@@ -186,6 +217,7 @@ ContainerMemorySpace::handleWriteRequest(uint32_t baseAddress) noexcept {
         Parent::handleWriteRequest(baseAddress);
     }
 }
+#if 0
 uint32_t
 ContainerMemorySpace::read(uint32_t address, uint16_t *value, uint32_t count) noexcept {
     if (auto result = find(address); result) {
@@ -202,6 +234,7 @@ ContainerMemorySpace::write(uint32_t address, uint16_t *value, uint32_t count) n
         return 0;
     }
 }
+#endif
 MemorySpace::Ptr
 ContainerMemorySpace::find(uint32_t address) noexcept {
     for (auto& a : children_) {
