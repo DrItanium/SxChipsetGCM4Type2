@@ -41,28 +41,41 @@ public:
     using Ptr = std::shared_ptr<Self>;
 public:
     virtual ~MemorySpace() = default;
-protected:
-    virtual void write8(uint32_t address, uint8_t value) noexcept = 0;
-    virtual void write16(uint32_t address, uint16_t value) noexcept = 0;
 public:
     /**
-     * @brief Write a given value to memory
-     * @param address The address that we want to read from relative to the space's base address
-     * @param value The value to write
-     * @param lss The size of the value
+     * @brief Write an 8-bit value to the given memory space at the target address
+     * @param address The full 32-bit address to write the given 8-bit value to
+     * @param value The 8-bit value to write
      */
-    virtual void write(uint32_t address, SplitWord16 value, LoadStoreStyle lss) noexcept;
-protected:
-    virtual uint8_t read8(uint32_t address) const noexcept = 0;
-    virtual uint16_t read16(uint32_t address) const noexcept = 0;
-public:
+    virtual void write8(uint32_t address, uint8_t value) noexcept { }
     /**
-     * @brief Read a 16-bit value from this space relative to the base address
-     * @param address The address that we want to read from relative to this space's base address
-     * @param lss The size of the value to read
-     * @return The 16-bit value
+     * @brief Write a 16-bit value to the given memory space at the target address
+     * @param address The full 32-bit address to write the given 16-bit value to
+     * @param value The 16-bit value to write
      */
-    [[nodiscard]] virtual uint16_t read(uint32_t address, LoadStoreStyle lss) const noexcept = 0;
+    virtual void write16(uint32_t address, uint16_t value) noexcept { }
+    /**
+     * @brief Write a 32-bit value to the given memory space at the target address
+     * @param address The full 32-bit address to write the given 32-bit value to
+     * @param value The 32-bit value to write
+     */
+    virtual void write32(uint32_t address, uint32_t value) noexcept { }
+    /**
+     * @brief Read and return a 16-bit value given a basic address
+     * @param address the 32-bit address to read from
+     * @return The 16-bit found at the target address
+     */
+    virtual uint16_t read16(uint32_t address) noexcept {
+        return 0;
+    }
+    /**
+     * @brief Read and return a 32-bit value given a basic address
+     * @param address the 32-bit address to read from
+     * @return The 32-bit found at the target address
+     */
+    virtual uint32_t read32(uint32_t address) noexcept {
+        return 0;
+    }
     /**
      * @brief Used to determine if this memory space responds to a given memory request
      * @param address The physical address to check for matching
@@ -73,8 +86,8 @@ public:
     virtual void handleWriteRequest(uint32_t baseAddress) noexcept;
     void handleReadRequest() noexcept;
     void handleWriteRequest() noexcept;
-    virtual uint32_t read(uint32_t address, uint16_t* value, uint32_t count) noexcept = 0;
-    virtual uint32_t write(uint32_t address, uint16_t* value, uint32_t count) noexcept = 0;
+    virtual uint32_t read(uint32_t address, uint8_t* value, uint32_t count) noexcept = 0;
+    virtual uint32_t write(uint32_t address, uint8_t* value, uint32_t count) noexcept = 0;
     virtual uint32_t getBaseAddress() const noexcept { return 0; }
     virtual uint32_t getEndAddress() const noexcept = 0;
 };
@@ -96,24 +109,6 @@ public:
      */
     SizedMemorySpace(uint32_t numPages) : numPages_(correctPageCount(numPages)), endAddress_((numPages_ << 8)) { }
     ~SizedMemorySpace() override = default;
-    /**
-     * @brief Write a given value to memory
-     * @param address The address that we want to read from relative to the space's base address
-     * @param value The value to write
-     * @param lss The size of the value
-     */
-    void write(uint32_t address, SplitWord16 value, LoadStoreStyle lss) noexcept override {
-        // always operate on relative addresses
-    }
-    /**
-     * @brief Read a 16-bit value from this space relative to the base address
-     * @param address The address that we want to read from relative to this space's base address
-     * @param lss The size of the value to read
-     * @return The 16-bit value
-     */
-    [[nodiscard]] uint16_t read(uint32_t address, LoadStoreStyle lss) const noexcept override {
-        return 0;
-    }
 
     /**
      * @brief Used to determine if this memory space responds to a given memory request
@@ -139,15 +134,18 @@ public:
     using Ptr = std::shared_ptr<Self>;
     explicit MappedMemorySpace(uint32_t baseAddress, MemorySpace& ptr) : baseAddress_(baseAddress), ptr_(ptr) { }
     ~MappedMemorySpace() override = default;
-    void write(uint32_t address, SplitWord16 value, LoadStoreStyle lss) noexcept override;
-    uint16_t read(uint32_t address, LoadStoreStyle lss) const noexcept override;
     bool respondsTo(uint32_t address) const noexcept override;
     void handleReadRequest(uint32_t baseAddress) noexcept override;
     void handleWriteRequest(uint32_t baseAddress) noexcept override;
-    uint32_t read(uint32_t address, uint16_t *value, uint32_t count) noexcept override;
-    uint32_t write(uint32_t address, uint16_t *value, uint32_t count) noexcept override;
     uint32_t getBaseAddress() const noexcept override { return baseAddress_; }
     uint32_t getEndAddress() const noexcept override { return getBaseAddress() + ptr_.getEndAddress(); }
+    void write8(uint32_t address, uint8_t value) noexcept override;
+    void write16(uint32_t address, uint16_t value) noexcept override;
+    void write32(uint32_t address, uint32_t value) noexcept override;
+    uint16_t read16(uint32_t address) noexcept override;
+    uint32_t read32(uint32_t address) noexcept override;
+    uint32_t read(uint32_t address, uint8_t *value, uint32_t count) noexcept override;
+    uint32_t write(uint32_t address, uint8_t *value, uint32_t count) noexcept override;
 private:
     [[nodiscard]] constexpr uint32_t makeAddressRelative(uint32_t absoluteAddress) const noexcept { return absoluteAddress - baseAddress_; }
 private:

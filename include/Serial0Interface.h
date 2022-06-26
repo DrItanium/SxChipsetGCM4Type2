@@ -116,15 +116,32 @@ public:
         }
     }
 
-    void
-    write(uint32_t address, SplitWord16 value, LoadStoreStyle) noexcept override {
-        switch (static_cast<uint8_t>(address)) {
-            case 0: sendToConsole(static_cast<char>(value.getWholeValue())); break;
-            case 2: Serial.flush(); break;
-            default: break;
+protected:
+    void write8(uint32_t address, uint8_t value) noexcept override {
+        switch (address) {
+            case 0:
+            case 1:
+                sendToConsole(value);
+                break;
+            case 2:
+            case 3:
+                Serial.flush();
+                break;
+            default:
+                break;
         }
     }
-private:
-    SplitWord32 value_ {0};
+    void write16(uint32_t address, uint16_t value) noexcept override {
+        switch (address) {
+            case 0:
+                sendToConsole(static_cast<char>(value));
+                break;
+            case 1:
+                Serial.flush();
+                break;
+            default:
+                break;
+        }
+    }
 };
 #endif //SXCHIPSET_SERIAL0INTERFACE_H

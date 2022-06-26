@@ -54,6 +54,8 @@ public:
         theCache_.begin();
     }
     ~RAM() override = default;
+protected:
+private:
     void write(uint32_t address, SplitWord16 value, LoadStoreStyle lss) noexcept override {
         auto& line = theCache_.getLine(TaggedAddress{address});
         line.set(ProcessorInterface::getCacheOffsetEntry<Cache_t::CacheEntryMask>(SplitWord32{address}),

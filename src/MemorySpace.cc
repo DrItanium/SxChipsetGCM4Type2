@@ -106,6 +106,34 @@ void
 MappedMemorySpace::handleWriteRequest(uint32_t addr) noexcept {
     ptr_.handleWriteRequest(makeAddressRelative(addr));
 }
+void
+MappedMemorySpace::write8(uint32_t address, uint8_t value) noexcept {
+    MemorySpace::write8(address, value);
+}
+void
+MappedMemorySpace::write16(uint32_t address, uint16_t value) noexcept {
+    MemorySpace::write16(address, value);
+}
+void
+MappedMemorySpace::write32(uint32_t address, uint32_t value) noexcept {
+    MemorySpace::write32(address, value);
+}
+uint16_t
+MappedMemorySpace::read16(uint32_t address) noexcept {
+    return MemorySpace::read16(address);
+}
+uint32_t
+MappedMemorySpace::read32(uint32_t address) noexcept {
+    return MemorySpace::read32(address);
+}
+uint32_t
+MappedMemorySpace::read(uint32_t address, uint8_t *value, uint32_t count) noexcept {
+    return 0;
+}
+uint32_t
+MappedMemorySpace::write(uint32_t address, uint8_t *value, uint32_t count) noexcept {
+    return 0;
+}
 uint32_t
 MappedMemorySpace::read(uint32_t address, uint16_t *value, uint32_t count) noexcept {
     return ptr_.read(makeAddressRelative(address), value, count);
@@ -201,22 +229,5 @@ map(uint32_t baseAddress, MemorySpace& space) noexcept {
 MappedMemorySpace::Ptr
 map(const MemorySpace::Ptr& previousSpace, MemorySpace& space) noexcept {
     return map(previousSpace->getEndAddress(), space);
-}
-
-void
-MemorySpace::write(uint32_t address, SplitWord16 value, LoadStoreStyle lss) noexcept {
-    switch (lss)  {
-        case LoadStoreStyle::Full16:
-            write16(address, value.getWholeValue());
-            break;
-        case LoadStoreStyle::Upper8:
-            write8(address + 1, value.getUpperHalf());
-            break;
-        case LoadStoreStyle::Lower8:
-            write8(address, value.getLowerHalf());
-            break;
-        default:
-            break;
-    }
 }
 
