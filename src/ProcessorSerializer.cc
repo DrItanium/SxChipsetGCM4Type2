@@ -24,10 +24,6 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 #include "ProcessorSerializer.h"
 
-SplitWord16
-ProcessorInterface::getHalfAddress() noexcept {
-    return extractAddress(DigitalPin<i960Pinout::MUXADR0>::readInPort());
-}
 void
 ProcessorInterface::setupDataLinesForWrite() noexcept {
     static constexpr uint32_t PortDirectionMask = 0x0003FCFF;
@@ -46,30 +42,44 @@ ProcessorInterface::setupDataLinesForRead() noexcept {
 }
 bool
 ProcessorInterface::isReadOperation() noexcept {
-    return DigitalPin<i960Pinout::W_R_>::isAsserted();
+    return !isWriteOperation_;
+}
+namespace
+{
+    union DataLines
+    {
+        uint32_t value;
+        struct
+        {
+            uint32_t lowerPart: 8;
+            uint32_t real89: 2;
+            uint32_t upperPartRest: 6;
+            uint32_t layout89: 2;
+            uint32_t rest: 14;
+        };
+        uint16_t halves[2];
+        constexpr auto getValue32() const noexcept { return value; }
+        constexpr auto getLowerHalf() const noexcept { return halves[0]; }
+        constexpr auto getUpperHalf() const noexcept { return halves[1]; }
+        explicit DataLines(uint32_t value) : value(value) {}
+        explicit DataLines(uint16_t lower, uint16_t upper = 0) : halves{lower, upper} { }
+    };
+
 }
 SplitWord16
 ProcessorInterface::getDataBits() noexcept {
-    auto portContents = DigitalPin<i960Pinout::Data0>::readInPort();
-    SplitWord16 result{0};
-    result.bytes[0] = static_cast<byte>(portContents);
-    result.bytes[1] = static_cast<byte>(portContents >> 10);
-    //delayMicroseconds(10);
-    return result;
+    DataLines tmp(DigitalPin<i960Pinout::Data0>::readInPort());
+    tmp.real89 = tmp.layout89;
+    return SplitWord16{tmp.halves[0]};
 }
 void
 ProcessorInterface::setDataBits(uint16_t value) noexcept {
-    // the latch is preserved in between data line changes
-    // okay we are still pointing as output values
-    // check the latch and see if the output value is the same as what is latched
-    constexpr uint32_t normalMask = 0x0003FCFF;
-    constexpr uint32_t invertMask = ~normalMask;
-    SplitWord16 data(value);
-    auto contents = (static_cast<uint32_t>(data.bytes[0]) | (static_cast<uint32_t>(data.bytes[1]) << 10)) & normalMask;
-    auto portContents = DigitalPin<i960Pinout::Data0>::readOutPort() & invertMask;
-    auto output = contents | portContents;
-    DigitalPin<i960Pinout::Data0>::writeOutPort(output);
-    //delayMicroseconds(10);
+    DataLines lineRepresentation(value, 0);
+    DataLines outPort(DigitalPin<i960Pinout::Data0>::readOutPort());
+    outPort.lowerPart = lineRepresentation.lowerPart;
+    outPort.layout89 = lineRepresentation.real89;
+    outPort.upperPartRest = lineRepresentation.upperPartRest;
+    DigitalPin<i960Pinout::Data0>::writeOutPort(outPort.getValue32());
 };
 void
 ProcessorInterface::begin() noexcept {

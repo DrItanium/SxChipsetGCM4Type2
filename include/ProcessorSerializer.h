@@ -49,44 +49,15 @@ public:
     [[nodiscard]] static auto getCacheOffsetEntry(SplitWord32 word) noexcept { return (word.bytes[0] >> 1) & offsetMask; }
     static void setupDataLinesForWrite() noexcept;
     static void setupDataLinesForRead() noexcept;
-private:
-    static constexpr SplitWord16 extractAddress(uint32_t value) noexcept {
-        // okay first step is to get the part of the value that we actually care about
-        constexpr uint32_t LowerPortion =  0b0000000000000000'0000001111111111;
-        constexpr uint32_t UpperPortion =  0b0000000000000011'1111000000000000;
-        auto lowerPart = LowerPortion & value;
-        auto upperPart = (UpperPortion & value) >> 2;
-        // The AHC158 inverts the output
-        return SplitWord16(~static_cast<uint16_t>(lowerPart | upperPart));
-    }
-    static SplitWord16 getHalfAddress() noexcept;
 public:
     static void newAddress() noexcept;
-    static void full32BitUpdate() noexcept {
-        // The multiplexed address lines are not mapped 01/23
-        // when high: 0-7, 16-23
-        // when low: 8-15, 24-31
-        // They are laid out 13/02 so it is necessary to unpack them and assign them as needed
-        digitalWrite<i960Pinout::MUXSel0, LOW>();
-        auto addressA = getHalfAddress();
-        digitalWrite<i960Pinout::MUXSel0, HIGH>();
-        auto addressB = getHalfAddress();
-        auto lower = addressA.getLowerHalf();
-        auto highest = addressA.getUpperHalf();
-        auto lowest = addressB.getLowerHalf();
-        auto higher = addressB.getUpperHalf();
-        address_.bytes[0] = lowest;
-        address_.bytes[1] = lower;
-        address_.bytes[2] = higher;
-        address_.bytes[3] = highest;
-    }
 
     template<bool inDebugMode>
     static void newDataCycle() noexcept {
-        full32BitUpdate<inDebugMode>();
+        newAddress();
         //delayMicroseconds(10); // this gets rid of a chipset halt problem that I'm not sure where is coming from
         //Serial.print(F("Address 0x")); Serial.println(address_.getWholeValue(), HEX);
-        if (ProcessorInterface::isReadOperation()) {
+        if (isReadOperation()) {
             setupDataLinesForRead();
             getMemory().handleReadRequest();
         } else {
@@ -94,20 +65,6 @@ public:
             getMemory().handleWriteRequest();
         }
     }
-    template<bool advanceAddress = true>
-    static void burstNext() noexcept {
-        if constexpr (advanceAddress) {
-            address_.wholeValue_ += 2;
-        }
-        // a test to see if we are running too fast and not allowing enough charge time between transaction points
-        //delayMicroseconds(10);
-    }
-    /**
-     * @brief Return the least significant byte of the address, useful for CoreChipsetFeatures
-     * @return The LSB of the address
-     */
-    [[nodiscard]] static auto getPageOffset() noexcept { return address_.bytes[0]; }
-    [[nodiscard]] static auto getPageIndex() noexcept { return address_.bytes[1]; }
     static void begin() noexcept;
 private:
     static inline SplitWord32 address_{0};
