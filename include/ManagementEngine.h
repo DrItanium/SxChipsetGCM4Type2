@@ -37,5 +37,6 @@ namespace ManagementEngine {
     void allowBoot() noexcept;
     void chipsetIsInSetup() noexcept;
     void chipsetReady() noexcept;
+    bool isLastCycleOfTransaction() noexcept;
 }
 #endif //SXCHIPSETGCM4TYPE2_MANAGEMENTENGINE_H

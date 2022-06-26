@@ -38,8 +38,9 @@ namespace ManagementEngine
     bool informCPU() noexcept {
         // don't pulse READY, instead just pull it low, the interrupt latency on the 4809 is horrible
         // so we just pull Ready high as soon as we get the next phase in.
-        //DigitalPin<i960Pinout::Ready>::pulse();
         DigitalPin<i960Pinout::Ready>::assertPin();
+        // synchronize and wait for the i960 to tell me it is ready to go
+        while (DigitalPin<i960Pinout::DoCycle>::isAsserted());
         // make sure that we just wait for the gating signal before continuing
         while (DigitalPin<i960Pinout::InTransaction>::isAsserted() && DigitalPin<i960Pinout::BurstNext>::isDeasserted());
         bool outcome = DigitalPin<i960Pinout::InTransaction>::isDeasserted();
@@ -74,5 +75,9 @@ namespace ManagementEngine
     void
     chipsetReady() noexcept {
         DigitalPin<i960Pinout::Reset960>::assertPin();
+    }
+    bool
+    isLastCycleOfTransaction() noexcept {
+        return DigitalPin<i960Pinout::BurstNext>::isDeasserted();
     }
 }
