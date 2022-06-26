@@ -110,7 +110,6 @@ class SizedMemorySpace : public MemorySpace {
 public:
     using Self = SizedMemorySpace;
     using Ptr = std::shared_ptr<Self>;
-    static constexpr uint32_t fixBaseAddress(uint32_t value) noexcept { return value & 0xFFFFFF00; }
     static constexpr uint32_t correctPageCount(uint32_t value) noexcept { return value < 1 ? 1 : value; }
 public:
     /**
