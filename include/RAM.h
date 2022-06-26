@@ -56,17 +56,41 @@ public:
     ~RAM() override = default;
 protected:
 private:
+#if 0
     void write(uint32_t address, SplitWord16 value, LoadStoreStyle lss) noexcept override {
         auto& line = theCache_.getLine(TaggedAddress{address});
         line.set(ProcessorInterface::getCacheOffsetEntry<Cache_t::CacheEntryMask>(SplitWord32{address}),
                  lss,
                  value);
     }
+
     [[nodiscard]]
     uint16_t
     read(uint32_t address, LoadStoreStyle lss) const noexcept override {
         return theCache_.getLine(TaggedAddress{address}).get(ProcessorInterface::getCacheOffsetEntry<Cache_t::CacheEntryMask>(SplitWord32{address}));
     }
+#endif
+public:
+    void write8(uint32_t address, uint8_t value) noexcept override {
+        TaggedAddress addr{address};
+        auto& theLine = theCache_.getLine(addr);
+    }
+    void write16(uint32_t address, uint16_t value) noexcept override {
+        MemorySpace::write16(address, value);
+    }
+    void write32(uint32_t address, uint32_t value) noexcept override {
+        MemorySpace::write32(address, value);
+    }
+    uint8_t read8(uint32_t address) const noexcept override {
+        return MemorySpace::read8(address);
+    }
+    uint16_t read16(uint32_t address) const noexcept override {
+        return MemorySpace::read16(address);
+    }
+    uint32_t read32(uint32_t address) const noexcept override {
+        return MemorySpace::read32(address);
+    }
+public:
     void
     handleReadRequest(uint32_t baseAddress) noexcept override {
         auto start = ProcessorInterface::getCacheOffsetEntry<decltype(theCache_)::CacheEntryMask>(SplitWord32{baseAddress});

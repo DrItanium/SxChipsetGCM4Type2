@@ -53,8 +53,8 @@ public:
         if (!full()) {
             auto& configDevice = getConfigurationDevice(numberOfItems_);
             ++numberOfItems_;
-            configDevice.baseAddress_ = ptr->getBaseAddress();
-            configDevice.flags_ = 0x8000'0000 | flags;
+            configDevice.baseAddress_.setWholeValue(ptr->getBaseAddress());
+            configDevice.flags_.setWholeValue(0x8000'0000 | flags);
             return true;
         }
         return false;
@@ -81,32 +81,47 @@ private:
         return std::make_tuple<uint8_t, uint8_t>(computeTargetPage(address), computeTargetOffset(address));
     }
 public:
-    [[nodiscard]] uint16_t read(uint32_t address, LoadStoreStyle lss) const noexcept override {
+    [[nodiscard]] uint16_t read16(uint32_t address) const noexcept override {
         auto [targetPage, targetOffset] = computeTarget(address);
-        return readGeneric(targetPage, targetOffset, lss);
-    }
-private:
-    [[nodiscard]] uint16_t readGeneric(uint8_t targetPage, uint8_t offset, LoadStoreStyle lss) const noexcept {
-        return entries_[targetPage & 0x1F][(offset >> 3) & 0x1F].read(offset & 0b111);
+        return entries_[targetPage & 0x1f][(targetOffset >> 3) & 0x1F].read16(targetOffset & 0b111);
     }
 private:
     struct ConfigurationEntry {
-        uint32_t baseAddress_ = 0;
-        uint32_t flags_ = 0;
+        SplitWord32 baseAddress_ {0};
+        SplitWord32 flags_ {0};
         explicit ConfigurationEntry(uint32_t baseAddress, uint32_t flags = 0) noexcept : baseAddress_(baseAddress), flags_(flags) {}
         ConfigurationEntry() : ConfigurationEntry(0, 0) { }
         void clear() noexcept {
-            flags_ = 0;
-            baseAddress_ = 0;
+            baseAddress_.setWholeValue(0);
+            flags_.setWholeValue(0);
         }
-        [[nodiscard]] uint16_t read(uint8_t offset) const noexcept {
-            switch (offset & 0b00000'111) {
-                case 0: return baseAddress_ ;
-                case 2: return static_cast<uint16_t>(baseAddress_ >> 16) ;
-                case 4: return flags_;
-                case 6: return static_cast<uint16_t>(flags_ >> 16);
-                default:
-                    return 0;
+        [[nodiscard]] constexpr uint8_t read8(uint8_t offset) const noexcept {
+            switch (offset & 0b111) {
+                case 0: return baseAddress_.getLowestByte();
+                case 1: return baseAddress_.getLowerByte();
+                case 2: return baseAddress_.getHigherByte();
+                case 3: return baseAddress_.getHighestByte();
+                case 4: return flags_.getLowestByte();
+                case 5: return flags_.getLowerByte();
+                case 6: return flags_.getHigherByte();
+                case 7: return flags_.getHighestByte();
+                default: return 0;
+            }
+        }
+        [[nodiscard]] constexpr uint16_t read16(uint8_t offset) const noexcept {
+            switch ((offset & 0b111) >> 1) {
+                case 0: return baseAddress_.getLowerHalf();
+                case 1: return baseAddress_.getUpperHalf();
+                case 2: return flags_.getLowerHalf();
+                case 3: return flags_.getUpperHalf();
+                default: return 0;
+            }
+        }
+        [[nodiscard]] constexpr uint32_t read32(uint8_t offset) const noexcept {
+            switch ((offset & 0b111) >> 2) {
+                case 0: return baseAddress_.getWholeValue();
+                case 1: return flags_.getWholeValue();
+                default: return 0;
             }
         }
     };

@@ -109,30 +109,16 @@ private:
 public:
     [[nodiscard]]
     uint16_t
-    read(uint32_t address, LoadStoreStyle ) const noexcept override {
-        switch (static_cast<uint8_t>(address)) {
+    read16(uint32_t address) const noexcept override {
+        switch (static_cast<uint8_t>(address) >> 1) {
             case 0: return getConsoleInput();
             default: return 0;
         }
     }
 
 protected:
-    void write8(uint32_t address, uint8_t value) noexcept override {
-        switch (address) {
-            case 0:
-            case 1:
-                sendToConsole(value);
-                break;
-            case 2:
-            case 3:
-                Serial.flush();
-                break;
-            default:
-                break;
-        }
-    }
     void write16(uint32_t address, uint16_t value) noexcept override {
-        switch (address) {
+        switch (static_cast<uint8_t>(address) >> 1) {
             case 0:
                 sendToConsole(static_cast<char>(value));
                 break;
