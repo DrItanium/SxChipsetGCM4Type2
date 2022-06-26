@@ -61,7 +61,7 @@ private:
     }
     static SplitWord16 getHalfAddress() noexcept;
 public:
-    template<bool inDebugMode>
+    static void newAddress() noexcept;
     static void full32BitUpdate() noexcept {
         // The multiplexed address lines are not mapped 01/23
         // when high: 0-7, 16-23
@@ -79,7 +79,6 @@ public:
         address_.bytes[1] = lower;
         address_.bytes[2] = higher;
         address_.bytes[3] = highest;
-        //updateTargetFunctions<inDebugMode>();
     }
 
     template<bool inDebugMode>
@@ -112,6 +111,7 @@ public:
     static void begin() noexcept;
 private:
     static inline SplitWord32 address_{0};
+    static inline bool isWriteOperation_ = false;
 };
 
 #endif //ARDUINO_IOEXPANDERS_H

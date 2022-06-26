@@ -71,12 +71,32 @@ ProcessorInterface::setDataBits(uint16_t value) noexcept {
     DigitalPin<i960Pinout::Data0>::writeOutPort(output);
     //delayMicroseconds(10);
 };
-LoadStoreStyle
-ProcessorInterface::getStyle() noexcept {
-    auto lower = static_cast<byte>(DigitalPin<i960Pinout::BE0>::read());
-    auto upper = static_cast<byte>(DigitalPin<i960Pinout::BE1>::read()) << 1;
-    return static_cast<LoadStoreStyle>(lower | upper);
-}
 void
 ProcessorInterface::begin() noexcept {
+}
+template<uint8_t pattern>
+uint8_t
+readMuxPort() noexcept {
+    digitalWrite<i960Pinout::MUXSel0, pattern & 0b001 ? HIGH : LOW>();
+    digitalWrite<i960Pinout::MUXSel1, pattern & 0b010 ? HIGH : LOW>();
+    digitalWrite<i960Pinout::MUXSel2, pattern & 0b100 ? HIGH : LOW>();
+    digitalWrite<i960Pinout::MUX_EN, LOW>();
+    auto value = static_cast<uint8_t>(DigitalPin<i960Pinout::MUXADR0>::readInPort() >> 16);
+    digitalWrite<i960Pinout::MUX_EN, HIGH>();
+    return value;
+}
+void
+ProcessorInterface::newAddress() noexcept {
+    // update the address here
+    auto lowest = readMuxPort<0>();
+    isWriteOperation_ = lowest & 0b1;
+    lowest &= 0b1111'1110; // clear the W/R bit out
+    auto lower = readMuxPort<1>();
+    auto higher = readMuxPort<2>();
+    auto highest = readMuxPort<3>();
+    address_ = SplitWord32{lowest, lower, higher, highest};
+}
+LoadStoreStyle
+ProcessorInterface::getStyle() noexcept {
+    return static_cast<LoadStoreStyle>((readMuxPort<4>() >> 4) & 0b11);
 }
