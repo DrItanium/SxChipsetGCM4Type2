@@ -37,6 +37,41 @@ enum class LoadStoreStyle : uint8_t {
     Lower8,
     None
 };
+constexpr uint8_t makeLoadStoreMask(LoadStoreStyle lo, LoadStoreStyle hi) noexcept {
+    return (static_cast<uint8_t>(lo) | (static_cast<uint8_t>(hi) << 2)) & 0b1111;
+}
+enum class LoadStoreStyle32 : uint8_t {
+#define X(Hi, Lo) Hi ## _ ## Lo = makeLoadStoreMask(LoadStoreStyle:: Lo , LoadStoreStyle:: Hi)
+#define Y(Hi) X(Hi, Full16), X(Hi, Upper8), X(Hi, Lower8), X(Hi, None)
+    Y(Full16),
+    Y(Upper8),
+    Y(Lower8),
+    Y(None),
+#undef Y
+#undef X
+    Full32 = Full16_Full16,
+    Upper16_Lower8 = Full16_Upper8,
+    Upper16_Lowest8 = Full16_Lower8,
+    Upper16 = Full16_None,
+    Highest8 = Upper8_None,
+    Highest8_Lower16 = Upper8_Full16,
+    Highest8_Lower8 = Upper8_Upper8,
+    Highest8_Lowest8 = Upper8_Lower8,
+    Higher8 = Lower8_None,
+    Higher8_Lower16 = Lower8_Full16,
+    Higher8_Lower8 = Lower8_Upper8,
+    Higher8_Lowest8 = Lower8_Lower8,
+    Lower16 = None_Full16,
+    Lowest8 = None_Lower8,
+    Lower8 = None_Upper8,
+    None = None_None,
+};
+constexpr LoadStoreStyle32 convert16To32(LoadStoreStyle lower, LoadStoreStyle upper) noexcept {
+    auto lowerHalf = static_cast<uint8_t>(lower);
+    auto upperHalf = static_cast<uint8_t>(upper) << 2;
+    return static_cast<LoadStoreStyle32>((lowerHalf | upperHalf) & 0b1111);
+}
+
 enum class i960Pinout : int {
 #include "Type201Pinout.def"
 };

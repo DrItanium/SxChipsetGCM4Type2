@@ -330,6 +330,10 @@ union SplitWord32 {
     [[nodiscard]] constexpr const auto& getUpperWord() const noexcept { return words_[1]; }
     [[nodiscard]] auto& getLowerWord() noexcept { return words_[0]; }
     [[nodiscard]] auto& getUpperWord() noexcept { return words_[1]; }
+    [[nodiscard]] constexpr auto getLowestByte() const noexcept { return bytes[0]; }
+    [[nodiscard]] constexpr auto getLowerByte() const noexcept { return bytes[1]; }
+    [[nodiscard]] constexpr auto getHigherByte() const noexcept { return bytes[2]; }
+    [[nodiscard]] constexpr auto getHighestByte() const noexcept { return bytes[3]; }
     void setLowerWord(SplitWord16 value) noexcept { words_[0] = value; }
     void setUpperWord(SplitWord16 value) noexcept { words_[1] = value; }
     void setLowerHalf(uint16_t value) noexcept { halves[0] = value; }

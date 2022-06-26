@@ -54,12 +54,81 @@ MemorySpace::handleReadRequest(uint32_t baseAddress) noexcept {
 }
 void
 MemorySpace::dispatchWriteRequest16(uint32_t address, LoadStoreStyle style, const SplitWord16& value) noexcept {
-
+    switch (style) {
+        case LoadStoreStyle::Full16:
+            write16(address, value.getWholeValue());
+            break;
+        case LoadStoreStyle::Upper8:
+            write8(address + 1, value.getUpperHalf());
+            break;
+        case LoadStoreStyle::Lower8:
+            write8(address, value.getLowerHalf());
+            break;
+        default:
+            break;
+    }
 }
 void
 MemorySpace::dispatchWriteRequest32(uint32_t address, LoadStoreStyle style, LoadStoreStyle style2, const SplitWord32 &value) noexcept {
-
+    switch (convert16To32(style, style2)) {
+        case LoadStoreStyle32::Full32:
+            write32(address, value.getWholeValue());
+            break;
+        case LoadStoreStyle32::Upper16_Lower8:
+            write8(address + 1, value.getLowerByte());
+            write16(address + 2, value.getUpperHalf());
+            break;
+        case LoadStoreStyle32::Upper16_Lowest8:
+            write8(address, value.getLowestByte());
+            write16(address + 2, value.getUpperHalf());
+            break;
+        case LoadStoreStyle32::Upper16:
+            write16(address + 2, value.getUpperHalf());
+            break;
+        case LoadStoreStyle32::Highest8:
+            write8(address + 3, value.getHighestByte());
+            break;
+        case LoadStoreStyle32::Highest8_Lower16:
+            write16(address, value.getLowerHalf());
+            write8(address + 3, value.getHighestByte());
+            break;
+        case LoadStoreStyle32::Highest8_Lower8:
+            write8(address + 1, value.getLowerByte());
+            write8(address + 3, value.getHighestByte());
+            break;
+        case LoadStoreStyle32::Highest8_Lowest8:
+            write8(address, value.getLowestByte());
+            write8(address + 3, value.getHighestByte());
+            break;
+        case LoadStoreStyle32::Higher8:
+            write8(address + 2, value.getHigherByte());
+            break;
+        case LoadStoreStyle32::Higher8_Lower16:
+            write16(address, value.getLowerHalf());
+            write8(address + 2, value.getHigherByte());
+            break;
+        case LoadStoreStyle32::Higher8_Lower8:
+            write8(address + 1, value.getLowerByte());
+            write8(address + 2, value.getHigherByte());
+            break;
+        case LoadStoreStyle32::Higher8_Lowest8:
+            write8(address + 0, value.getLowerByte());
+            write8(address + 2, value.getHigherByte());
+            break;
+        case LoadStoreStyle32::Lower16:
+            write16(address, value.getLowerHalf());
+            break;
+        case LoadStoreStyle32::Lowest8:
+            write8(address, value.getLowestByte());
+            break;
+        case LoadStoreStyle32::Lower8:
+            write8(address+1, value.getLowerByte());
+            break;
+        default:
+            break;
+    }
 }
+
 void
 MemorySpace::handleWriteRequest(uint32_t baseAddress) noexcept {
     for (auto address = baseAddress; ; address += 2) {
