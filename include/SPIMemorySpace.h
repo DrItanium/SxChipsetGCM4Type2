@@ -42,35 +42,25 @@ public:
 private:
     void performSPITransfer() noexcept;
 public:
-    void write(uint32_t address, SplitWord16 value, LoadStoreStyle lss) noexcept override {
-        // ignore non Full16 writes!
-        if (lss != LoadStoreStyle::Full16) {
-            return;
-        }
+    void
+    write32(uint32_t address, uint32_t value) noexcept override {
         switch (static_cast<uint8_t>(address)) {
-            // don't allow writes to valid
             case 4:
-                requestPointer_.words_[0] = value;
-                break;
-            case 6:
-                requestPointer_.words_[1] = value;
+                requestPointer_.setWholeValue(value);
                 performSPITransfer();
                 break;
             default:
                 break;
         }
     }
-    uint16_t read(uint32_t address, LoadStoreStyle lss) const noexcept override {
-        switch (static_cast<uint8_t>(address)) {
-            case 0: return 0xFFFF;
-            case 2: return 0xFFFF;
-            case 4: return requestPointer_.getLowerHalf();
-            case 6: return requestPointer_.getUpperHalf();
-            case 8: return maximumSpeed_.getLowerHalf();
-            case 10: return maximumSpeed_.getUpperHalf();
-            /// @todo reimplement a proper ready flag later on
-            case 12: return 0xFFFF;
-            case 14: return 0xFFFF;
+    uint32_t
+    read32(uint32_t address) const noexcept override {
+        switch (static_cast<uint8_t>(address) >> 2) {
+            case 0: return 0xFFFF'FFFF;
+            case 1: return requestPointer_.getWholeValue();
+            case 2: return maximumSpeed_.getWholeValue();
+            /// @todo implement a proper ready flag
+            case 3: return 0xFFFF'FFFF;
             default:
                 return 0;
         }

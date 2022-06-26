@@ -181,17 +181,6 @@ SizedMemorySpace::write(uint32_t address, uint8_t *value, uint32_t count) noexce
     }
     return numWritten;
 }
-#if 0
-
-void
-MappedMemorySpace::write(uint32_t address, SplitWord16 value, LoadStoreStyle lss) noexcept {
-    ptr_.write(makeAddressRelative(address), value, lss);
-}
-uint16_t
-MappedMemorySpace::read(uint32_t address, LoadStoreStyle lss) const noexcept {
-    return ptr_.read(makeAddressRelative(address), lss);
-}
-#endif
 bool
 MappedMemorySpace::respondsTo(uint32_t address) const noexcept {
     return address >= baseAddress_ && ptr_.respondsTo(address);
@@ -206,42 +195,36 @@ MappedMemorySpace::handleWriteRequest(uint32_t addr) noexcept {
 }
 void
 MappedMemorySpace::write8(uint32_t address, uint8_t value) noexcept {
-    MemorySpace::write8(address, value);
+    ptr_.write8(makeAddressRelative(address), value);
 }
 void
 MappedMemorySpace::write16(uint32_t address, uint16_t value) noexcept {
-    MemorySpace::write16(address, value);
+    ptr_.write16(makeAddressRelative(address), value);
 }
 void
 MappedMemorySpace::write32(uint32_t address, uint32_t value) noexcept {
-    MemorySpace::write32(address, value);
+    ptr_.write32(makeAddressRelative(address), value);
 }
 uint16_t
-MappedMemorySpace::read16(uint32_t address) noexcept {
-    return MemorySpace::read16(address);
+MappedMemorySpace::read16(uint32_t address) const noexcept {
+    return ptr_.read16(makeAddressRelative(address));
 }
 uint32_t
-MappedMemorySpace::read32(uint32_t address) noexcept {
-    return MemorySpace::read32(address);
+MappedMemorySpace::read32(uint32_t address) const noexcept {
+    return ptr_.read32(makeAddressRelative(address));
 }
 uint32_t
 MappedMemorySpace::read(uint32_t address, uint8_t *value, uint32_t count) noexcept {
-    return 0;
-}
-uint32_t
-MappedMemorySpace::write(uint32_t address, uint8_t *value, uint32_t count) noexcept {
-    return 0;
-}
-#if 0
-uint32_t
-MappedMemorySpace::read(uint32_t address, uint16_t *value, uint32_t count) noexcept {
     return ptr_.read(makeAddressRelative(address), value, count);
 }
 uint32_t
-MappedMemorySpace::write(uint32_t address, uint16_t *value, uint32_t count) noexcept {
+MappedMemorySpace::write(uint32_t address, uint8_t *value, uint32_t count) noexcept {
     return ptr_.write(makeAddressRelative(address), value, count);
 }
-#endif
+uint8_t
+MappedMemorySpace::read8(uint32_t address) const noexcept {
+    return ptr_.read8(makeAddressRelative(address));
+}
 
 void
 MemorySpace::handleWriteRequest() noexcept {
@@ -334,3 +317,63 @@ map(const MemorySpace::Ptr& previousSpace, MemorySpace& space) noexcept {
     return map(previousSpace->getEndAddress(), space);
 }
 
+void
+ContainerMemorySpace::write8(uint32_t address, uint8_t value) noexcept {
+    if (auto result = find(address); result) {
+        result->write8(address, value);
+    }
+}
+void
+ContainerMemorySpace::write16(uint32_t address, uint16_t value) noexcept {
+    if (auto result = find(address); result) {
+        result->write16(address, value);
+    }
+}
+void
+ContainerMemorySpace::write32(uint32_t address, uint32_t value) noexcept {
+    if (auto result = find(address); result) {
+        result->write32(address, value);
+    }
+}
+uint8_t
+ContainerMemorySpace::read8(uint32_t address) const noexcept {
+    if (auto result = find(address); result) {
+        return result->read8(address);
+    } else {
+        return 0;
+    }
+}
+uint16_t
+ContainerMemorySpace::read16(uint32_t address) const noexcept {
+    if (auto result = find(address); result) {
+        return result->read16(address);
+    } else {
+        return 0;
+    }
+}
+uint32_t
+ContainerMemorySpace::read32(uint32_t address) const noexcept {
+    if (auto result = find(address); result) {
+        return result->read32(address);
+    } else {
+        return 0;
+    }
+}
+uint32_t
+ContainerMemorySpace::read(uint32_t address, uint8_t *value, uint32_t count) noexcept {
+    /// @todo implement crossing multiple boundaries?
+    if (auto result = find(address); result) {
+        return result->read(address, value, count);
+    } else {
+        return 0;
+    }
+}
+uint32_t
+ContainerMemorySpace::write(uint32_t address, uint8_t *value, uint32_t count) noexcept {
+    /// @todo implement crossing multiple boundaries?
+    if (auto result = find(address); result) {
+        return result->write(address, value, count);
+    } else {
+        return 0;
+    }
+}

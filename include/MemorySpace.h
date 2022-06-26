@@ -65,7 +65,7 @@ public:
      * @param address The address to read from
      * @return the 8-bit value stored at the given address
      */
-    virtual uint8_t read8(uint32_t address) noexcept {
+    virtual uint8_t read8(uint32_t address) const noexcept {
         return 0;
     }
     /**
@@ -73,7 +73,7 @@ public:
      * @param address the 32-bit address to read from
      * @return The 16-bit found at the target address
      */
-    virtual uint16_t read16(uint32_t address) noexcept {
+    virtual uint16_t read16(uint32_t address) const noexcept {
         return 0;
     }
     /**
@@ -81,7 +81,7 @@ public:
      * @param address the 32-bit address to read from
      * @return The 32-bit found at the target address
      */
-    virtual uint32_t read32(uint32_t address) noexcept {
+    virtual uint32_t read32(uint32_t address) const noexcept {
         return 0;
     }
     /**
@@ -153,8 +153,9 @@ public:
     void write8(uint32_t address, uint8_t value) noexcept override;
     void write16(uint32_t address, uint16_t value) noexcept override;
     void write32(uint32_t address, uint32_t value) noexcept override;
-    uint16_t read16(uint32_t address) noexcept override;
-    uint32_t read32(uint32_t address) noexcept override;
+    uint8_t read8(uint32_t address) const noexcept override;
+    uint16_t read16(uint32_t address) const noexcept override;
+    uint32_t read32(uint32_t address) const noexcept override;
     uint32_t read(uint32_t address, uint8_t *value, uint32_t count) noexcept override;
     uint32_t write(uint32_t address, uint8_t *value, uint32_t count) noexcept override;
 private:
@@ -176,6 +177,14 @@ public:
     void handleReadRequest(uint32_t baseAddress) noexcept override;
     void handleWriteRequest(uint32_t baseAddress) noexcept override;
     void emplace_back(const Parent::Ptr& target) noexcept { children_.emplace_back(target); }
+    void write8(uint32_t address, uint8_t value) noexcept override;
+    void write16(uint32_t address, uint16_t value) noexcept override;
+    void write32(uint32_t address, uint32_t value) noexcept override;
+    uint8_t read8(uint32_t address) const noexcept override;
+    uint16_t read16(uint32_t address) const noexcept override;
+    uint32_t read32(uint32_t address) const noexcept override;
+    uint32_t read(uint32_t address, uint8_t *value, uint32_t count) noexcept override;
+    uint32_t write(uint32_t address, uint8_t *value, uint32_t count) noexcept override;
 private:
     Parent::Ptr find(uint32_t address) noexcept;
     const Parent::Ptr find(uint32_t address) const noexcept;
