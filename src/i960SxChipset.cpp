@@ -303,15 +303,24 @@ setupMemoryMap() {
     static constexpr uint32_t ramStart = 0x0000'0000;
     auto memory = map(ramStart, theRAM);
     /// @todo define more items here
+    auto sdcardInterface = map(0xFE00'0000, sdcard_);
+    // originally the sdcard file interface was designed to be placed independently of the ctl register
+    // however, now it is placed contiguously
+    auto sdcardFileInterface = map(0xFE00'0100, sdcard_);
     auto spi = map(chipsetDevicesStart + 0xE'FE00, spi0);
     auto serial = map(chipsetDevicesStart + 0xE'FF00, uart0);
     static_assert((0xFFFE'FF00 + (1 << 8)) == 0xFFFF'0000);
     auto configSpaceMapping = map(chipsetDevicesStart + 0xF'0000, configurationSpace);
     configurationSpace.addDevice(serial);
     configurationSpace.addDevice(spi);
+    configurationSpace.addDevice(sdcardInterface);
+    // this is a bit of a hack because previously I was assuming that the file interface could be anywhere!
+    // but in reality it is not important
+    configurationSpace.addDevice(sdcardFileInterface);
     fullSpace.emplace_back(memory);
     fullSpace.emplace_back(configSpaceMapping);
     fullSpace.emplace_back(serial);
+    fullSpace.emplace_back(sdcardInterface);
     /// @todo add more items to full space here
 }
 MemorySpace&
