@@ -83,7 +83,7 @@ CoreChipsetFeatures configurationSpace;
 UART0Interface uart0;
 SPIMemorySpace spi0;
 TheSDInterface sdcard_(SD);
-NullMemorySpace null_;
+//NullMemorySpace null_;
 
 template<bool inDebugMode>
 void invocationBody() noexcept {
@@ -313,19 +313,23 @@ setupMemoryMap() {
     auto serial = map(chipsetDevicesStart + 0xE'FF00, uart0);
     auto spi = map(chipsetDevicesStart + 0xE'FE00, spi0);
     // null_ is a fake device so just define it
-    auto auxDisplayInterface = map(chipsetDevicesStart + 0xE'FD00, null_);
-    auto displayInterface = map(chipsetDevicesStart + 0xE'FC00, null_);
-    auto rtcInterface = map(chipsetDevicesStart + 0xE'FB00, null_);
+    //auto auxDisplayInterface = map(chipsetDevicesStart + 0xE'FD00, null_);
+    //auto displayInterface = map(chipsetDevicesStart + 0xE'FC00, null_);
+    //auto rtcInterface = map(chipsetDevicesStart + 0xE'FB00, null_);
+    //auto gpioInterface = map(chipsetDevicesStart + 0xA'0000, null_);
+    //auto twiInterface = map(chipsetDevicesStart + 0xA'0000, null_);
     // make sure that the layout
     configurationSpace.addDevice(serial);
     configurationSpace.addDevice(sdcardInterface);
     // this is a bit of a hack because previously I was assuming that the file interface could be anywhere!
     // but in reality it is not important
     configurationSpace.addDevice(sdcardFileInterface);
-    configurationSpace.addDevice(auxDisplayInterface) ;
-    configurationSpace.addDevice(displayInterface);
-    configurationSpace.addDevice(rtcInterface);
-    configurationSpace.addDevice(spi);
+    configurationSpace.addDevice(0, 0) ; // Aux display
+    configurationSpace.addDevice(0, 0); // Display
+    configurationSpace.addDevice(0, 0); //RTC
+    configurationSpace.addDevice(0, 0); // SPI
+    configurationSpace.addDevice(0, 0); // GPIO
+    configurationSpace.addDevice(0, 0); // TWI
     fullSpace.emplace_back(memory);
     fullSpace.emplace_back(configSpaceMapping);
     fullSpace.emplace_back(serial);

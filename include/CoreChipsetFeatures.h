@@ -50,11 +50,15 @@ public:
     auto& getConfigurationDevice(uint16_t deviceId) noexcept { return entries_[(deviceId >> 5) & 0b11111][deviceId & 0b11111]; }
     bool
     addDevice(const MemorySpace::Ptr& ptr, uint32_t flags = 0) noexcept {
+        return addDevice(ptr->getBaseAddress(), 0x8000'0000 | flags);
+    }
+    bool
+    addDevice(uint32_t address, uint32_t flags) noexcept {
         if (!full()) {
             auto& configDevice = getConfigurationDevice(numberOfItems_);
             ++numberOfItems_;
-            configDevice.baseAddress_.setWholeValue(ptr->getBaseAddress());
-            configDevice.flags_.setWholeValue(0x8000'0000 | flags);
+            configDevice.baseAddress_.setWholeValue(address);
+            configDevice.flags_.setWholeValue(flags);
             return true;
         }
         return false;
