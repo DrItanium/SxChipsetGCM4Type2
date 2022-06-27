@@ -275,6 +275,10 @@ DefOutputPin2(i960Pinout::MUXSel0, LOW, HIGH);
 DefOutputPin2(i960Pinout::MUXSel1, LOW, HIGH);
 DefOutputPin2(i960Pinout::MUXSel2, LOW, HIGH);
 DefOutputPin2(i960Pinout::MUX_EN, LOW, HIGH);
+DefInputPin2(i960Pinout::Feather0_INT, LOW, HIGH);
+DefInputPin2(i960Pinout::Feather1_INT, LOW, HIGH);
+DefInputPin2(i960Pinout::BusHold_Acknowledge, HIGH, LOW);
+DefOutputPin2(i960Pinout::BusHold, HIGH, LOW);
 #undef DefOutputPin2
 #undef DefInputPin2
 #undef DefInputPullupPin2
