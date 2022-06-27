@@ -236,13 +236,13 @@ struct DigitalPinConfiguration<pin> { \
 
 DefSPICSPin2(i960Pinout::GPIOSelect);
 DefSPICSPin2(i960Pinout::SD_EN);
-DefOutputPin2(i960Pinout::WaitBoot960, LOW, HIGH);
+DefOutputPin2(i960Pinout::ChipsetBooted, LOW, HIGH);
 DefOutputPin2(i960Pinout::Ready, LOW, HIGH);
 DefOutputPin2(i960Pinout::Reset4809, LOW, HIGH);
 DefInputPin2(i960Pinout::SuccessfulBoot, HIGH, LOW);
-DefInputPin2(i960Pinout::W_R_, LOW, HIGH);
-DefInputPin2(i960Pinout::BE0, LOW, HIGH);
-DefInputPin2(i960Pinout::BE1, LOW, HIGH);
+//DefInputPin2(i960Pinout::W_R_, LOW, HIGH);
+//DefInputPin2(i960Pinout::BE0, LOW, HIGH);
+//DefInputPin2(i960Pinout::BE1, LOW, HIGH);
 DefInputPin2(i960Pinout::INT_EN0, LOW, HIGH);
 DefInputPin2(i960Pinout::DoCycle, LOW, HIGH);
 DefInputPin2(i960Pinout::BurstNext, HIGH, LOW); // BLAST Pin emulation
@@ -291,6 +291,7 @@ struct DigitalPin2 {
     static constexpr bool isInputPullupPin() noexcept { return Configuration::isInputPullupPin(); }
     static constexpr bool isInputPulldownPin() noexcept { return Configuration::isInputPulldownPin(); }
     static constexpr bool isBidirectionalPin() noexcept { return isInputPin() && isOutputPin(); }
+    static_assert(Configuration::isSpecialized(), "Digital Pin target is not specialized!");
     static constexpr auto getDirection() noexcept {
         if constexpr (isBidirectionalPin()) {
            return directionIsOutput_ ? OUTPUT : INPUT;

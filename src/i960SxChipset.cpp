@@ -182,7 +182,39 @@ auto& UnoUart = Serial1;
 auto& PicUart = Serial4;
 auto& Feather0Uart = Serial2;
 auto& Feather1Uart = Serial3;
-
+void
+setupDataLines() {
+    DigitalPin<i960Pinout::Data0>::configure();
+    DigitalPin<i960Pinout::Data1>::configure();
+    DigitalPin<i960Pinout::Data2>::configure();
+    DigitalPin<i960Pinout::Data3>::configure();
+    DigitalPin<i960Pinout::Data4>::configure();
+    DigitalPin<i960Pinout::Data5>::configure();
+    DigitalPin<i960Pinout::Data6>::configure();
+    DigitalPin<i960Pinout::Data7>::configure();
+    DigitalPin<i960Pinout::Data8>::configure();
+    DigitalPin<i960Pinout::Data9>::configure();
+    DigitalPin<i960Pinout::Data10>::configure();
+    DigitalPin<i960Pinout::Data11>::configure();
+    DigitalPin<i960Pinout::Data12>::configure();
+    DigitalPin<i960Pinout::Data13>::configure();
+    DigitalPin<i960Pinout::Data14>::configure();
+    DigitalPin<i960Pinout::Data15>::configure();
+}
+void setupMux() noexcept {
+    DigitalPin<i960Pinout::MUXADR0>::configure();
+    DigitalPin<i960Pinout::MUXADR1>::configure();
+    DigitalPin<i960Pinout::MUXADR2>::configure();
+    DigitalPin<i960Pinout::MUXADR3>::configure();
+    DigitalPin<i960Pinout::MUXADR4>::configure();
+    DigitalPin<i960Pinout::MUXADR5>::configure();
+    DigitalPin<i960Pinout::MUXADR6>::configure();
+    DigitalPin<i960Pinout::MUXADR7>::configure();
+    DigitalPin<i960Pinout::MUXSel0>::configure(); DigitalPin<i960Pinout::MUXSel0>::deassertPin();
+    DigitalPin<i960Pinout::MUXSel1>::configure(); DigitalPin<i960Pinout::MUXSel1>::deassertPin();
+    DigitalPin<i960Pinout::MUXSel2>::configure(); DigitalPin<i960Pinout::MUXSel2>::deassertPin();
+    DigitalPin<i960Pinout::MUX_EN>::configure(); DigitalPin<i960Pinout::MUX_EN>::deassertPin();
+}
 void setup() {
     ManagementEngine::configure();
     ManagementEngine::holdInReset();
@@ -210,52 +242,17 @@ void setup() {
 
     SPI.begin();
     Wire.begin();
-    configurePins<
-            i960Pinout::SD_EN,
-            i960Pinout::Ready,
-            i960Pinout::GPIOSelect,
-            i960Pinout::BE0,
-            i960Pinout::BE1,
-            i960Pinout::W_R_,
-            i960Pinout::SuccessfulBoot,
-            i960Pinout::INT_EN0,
-            i960Pinout::InTransaction,
-            i960Pinout::DoCycle,
-            i960Pinout::BurstNext,
-            i960Pinout::Data0,
-            i960Pinout::Data1,
-            i960Pinout::Data2,
-            i960Pinout::Data3,
-            i960Pinout::Data4,
-            i960Pinout::Data5,
-            i960Pinout::Data6,
-            i960Pinout::Data7,
-            i960Pinout::Data8,
-            i960Pinout::Data9,
-            i960Pinout::Data10,
-            i960Pinout::Data11,
-            i960Pinout::Data12,
-            i960Pinout::Data13,
-            i960Pinout::Data14,
-            i960Pinout::Data15,
-            i960Pinout::MUXADR0,
-            i960Pinout::MUXADR1,
-            i960Pinout::MUXADR2,
-            i960Pinout::MUXADR3,
-            i960Pinout::MUXADR4,
-            i960Pinout::MUXADR5,
-            i960Pinout::MUXADR6,
-            i960Pinout::MUXADR7,
-            i960Pinout::MUXSel1,
-            i960Pinout::MUXSel2,
-            i960Pinout::MUX_EN,
-            i960Pinout::MUXSel0
-            >();
+    DigitalPin<i960Pinout::SD_EN>::configure(); DigitalPin<i960Pinout::SD_EN>::deassertPin();
+    DigitalPin<i960Pinout::Ready>::configure(); DigitalPin<i960Pinout::Ready>::deassertPin();
+    DigitalPin<i960Pinout::GPIOSelect>::configure(); DigitalPin<i960Pinout::GPIOSelect>::deassertPin();
+    DigitalPin<i960Pinout::INT_EN0>::configure(); DigitalPin<i960Pinout::INT_EN0>::deassertPin();
+    DigitalPin<i960Pinout::Feather0_INT>::configure();
+    DigitalPin<i960Pinout::Feather1_INT>::configure();
+    DigitalPin<i960Pinout::BusHold>::configure(); DigitalPin<i960Pinout::BusHold>::deassertPin();
+    DigitalPin<i960Pinout::BusHold_Acknowledge>::configure();
+    setupMux();
+    setupDataLines();
     // all of these pins need to be pulled high
-    DigitalPin<i960Pinout::SD_EN>::deassertPin();
-    DigitalPin<i960Pinout::Ready>::deassertPin();
-    DigitalPin<i960Pinout::GPIOSelect>::deassertPin();
-    DigitalPin<i960Pinout::MUXSel0>::deassertPin();
     if constexpr (TestReadyPinSignal) {
         Serial.println("TEST READY SIGNAL PIN MODE");
         while (true) {

@@ -29,10 +29,10 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #ifndef SXCHIPSETGCM4TYPE2_MANAGEMENTENGINE_H
 #define SXCHIPSETGCM4TYPE2_MANAGEMENTENGINE_H
 namespace ManagementEngine {
+    void configure() noexcept;
     void waitForCycleUnlock() noexcept;
     [[nodiscard]] bool informCPU() noexcept;
     void waitForBootSignal() noexcept;
-    void configure() noexcept;
     void holdInReset() noexcept;
     void allowBoot() noexcept;
     void chipsetIsInSetup() noexcept;

@@ -80,8 +80,8 @@ BurstNext = PORT_B02,
 SuccessfulBoot = PORT_B18,
 
 // extra i960 signals
-i960_HOLD = PORT_D20,
-i960_HLDA = PORT_D21,
+BusHold = PORT_D20,
+BusHold_Acknowledge = PORT_D21,
 INT_EN0 = PORT_C21,
 Reset4809 = PORT_C20,
 Ready = PORT_C18,
@@ -90,7 +90,7 @@ Ready = PORT_C18,
 ChipsetBooted = PORT_C19,
 
 SD_EN = SDCARD_CS,
-
+#if 0
 W_R_ = AliasDeviceBase,       i960_A8  /* = Mux_BitB0 */ , i960_A16 /* = Mux_BitB0 */, i960_A24 /* = Mux_BitB0 */, i960_DT_R /* = Mux_BitB0 */,
 i960_A1 /* = Mux_BitB1 */,        i960_A9  /* = Mux_BitB1 */ , i960_A17 /* = Mux_BitB1 */, i960_A25 /* = Mux_BitB1 */, i960_BurstA1 /* = Mux_BitB1 */,
 i960_A2 /* = Mux_BitB2 */,        i960_A10 /* = Mux_BitB2 */ , i960_A18 /* = Mux_BitB2 */, i960_A26 /* = Mux_BitB2 */, i960_BurstA2 /* = Mux_BitB2 */,
@@ -101,3 +101,4 @@ i960_A6 /* = Mux_BitB6 */,        i960_A14 /* = Mux_BitB6 */ , i960_A22 /* = Mux
 i960_A7 /* = Mux_BitB7 */,        i960_A15 /* = Mux_BitB7 */ , i960_A23 /* = Mux_BitB7 */, i960_A31 /* = Mux_BitB7 */,
 WaitBoot960 /* = ChipsetBooted */,
 Reset960 /* = Reset4809 */,
+#endif

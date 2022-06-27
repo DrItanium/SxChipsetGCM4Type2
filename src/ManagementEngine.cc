@@ -58,7 +58,11 @@ namespace ManagementEngine
         // by resetting the 4809 we are resetting the entire system
         DigitalPin<i960Pinout::Reset4809>::configure();
         // Reset960 is waitboot960 in type 3.00 but in 3.01 it is actually used a chipset booted pin instead
-        DigitalPin<i960Pinout::Reset960>::configure();
+        DigitalPin<i960Pinout::ChipsetBooted>::configure();
+        DigitalPin<i960Pinout::InTransaction>::configure();
+        DigitalPin<i960Pinout::DoCycle>::configure();
+        DigitalPin<i960Pinout::BurstNext>::configure();
+        DigitalPin<i960Pinout::SuccessfulBoot>::configure();
     }
     void
     holdInReset() noexcept {
@@ -70,11 +74,11 @@ namespace ManagementEngine
     }
     void
     chipsetIsInSetup() noexcept {
-        DigitalPin<i960Pinout::Reset960>::deassertPin();
+        DigitalPin<i960Pinout::ChipsetBooted>::deassertPin();
     }
     void
     chipsetReady() noexcept {
-        DigitalPin<i960Pinout::Reset960>::assertPin();
+        DigitalPin<i960Pinout::ChipsetBooted>::assertPin();
     }
     bool
     isLastCycleOfTransaction() noexcept {
