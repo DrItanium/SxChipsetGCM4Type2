@@ -33,11 +33,10 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 template<typename T>
 class SDCardAsRam {
 public:
-    using SDInterface = T;
     SDCardAsRam() = delete;
     ~SDCardAsRam() = delete;
-    static void begin() noexcept {
-        SDInterface::begin();
+    static void
+    begin() noexcept {
         if (!theRam_.open("ram.bin", FILE_WRITE)) {
             signalHaltState(F("COULD NOT OPEN RAM.BIN FOR READ/WRITE"));
         }

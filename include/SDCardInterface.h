@@ -138,7 +138,7 @@ private:
         }
         return cardMounted_;
     }
-    uint16_t findFreeFile() noexcept {
+    uint16_t findFreeFile() const noexcept {
         for (uint16_t i = 0; i < MaximumNumberOfOpenFiles; ++i) {
             if (!files_[i].isOpen()) {
                 return i;
@@ -146,7 +146,7 @@ private:
         }
         return 0xFFFF;
     }
-    uint16_t tryOpenFile() noexcept {
+    uint16_t tryOpenFile() const noexcept {
         if (numberOfOpenFiles_ < MaximumNumberOfOpenFiles) {
             // when we open a new file we have to make sure that we are less than the number of open files
             // But we also need to keep track of proper indexes as well. This is a two layer process
@@ -163,60 +163,15 @@ private:
         }
         return -1;
     }
-    bool tryMakeDirectory(bool makeMissingParents = false) noexcept { return backingStore_.mkdir(sdCardPath_, makeMissingParents); }
-    bool exists() noexcept { return backingStore_.exists(sdCardPath_); }
-    bool remove() noexcept { return backingStore_.remove(sdCardPath_); }
-    uint16_t ctlRead(uint8_t offset, LoadStoreStyle lss) noexcept {
-        if (offset < 80) {
-            if (auto result = SplitWord16(reinterpret_cast<uint16_t*>(sdCardPath_)[offset >> 1]); lss == LoadStoreStyle::Upper8) {
-                return result.bytes[1];
-            } else if (lss == LoadStoreStyle::Lower8) {
-                return result.bytes[0];
-            } else {
-                return result.getWholeValue();
-            }
-        } else {
-            using T = SDCardFileSystemRegisters;
-            switch (static_cast<T>(offset)) {
-                case T::OpenPort:
-                    return tryOpenFile();
-                case T::MakeDirectoryPort:
-                    return tryMakeDirectory(makeMissingParentDirectories_);
-                case T::ExistsPort:
-                    return exists();
-                case T::RemovePort:
-                    return remove();
-                case T::SDClusterCountLower:
-                    return clusterCount_.halves[0];
-                case T::SDClusterCountUpper:
-                    return clusterCount_.halves[1];
-                case T::SDVolumeSectorCountLower:
-                    return volumeSectorCount_.halves[0];
-                case T::SDVolumeSectorCountUpper:
-                    return volumeSectorCount_.halves[1];
-                case T::SDBytesPerSector:
-                    return bytesPerSector_;
-                case T::MaximumNumberOfOpenFiles:
-                    return MaximumNumberOfOpenFiles;
-                case T::NumberOfOpenFiles:
-                    return numberOfOpenFiles_;
-                case T::MakeMissingParentDirectories:
-                    return makeMissingParentDirectories_;
-                case T::FilePermissions:
-                    return filePermissions_;
-                case T::MountCTL:
-                    return cardMounted_ ? 0xFFFF : 0;
-                default:
-                    return 0;
-            }
-        }
-    }
+    bool tryMakeDirectory(bool makeMissingParents = false) const noexcept { return backingStore_.mkdir(sdCardPath_, makeMissingParents); }
+    bool exists() const noexcept { return backingStore_.exists(sdCardPath_); }
+    bool remove() const noexcept { return backingStore_.remove(sdCardPath_); }
     struct TreatAs16Bit { using StorageType = uint16_t; };
     struct TreatAs32Bit { using StorageType = uint32_t; };
     struct TreatAs8Bit { using StorageType = uint8_t; };
-    auto fileRead(uint8_t index, uint8_t offset, TreatAs8Bit) noexcept { return files_[index].read8(offset); }
-    auto fileRead(uint8_t index, uint8_t offset, TreatAs16Bit) noexcept { return files_[index].read16(offset); }
-    auto fileRead(uint8_t index, uint8_t offset, TreatAs32Bit) noexcept { return files_[index].read32(offset); }
+    auto fileRead(uint8_t index, uint8_t offset, TreatAs8Bit) const noexcept { return files_[index].read8(offset); }
+    auto fileRead(uint8_t index, uint8_t offset, TreatAs16Bit) const noexcept { return files_[index].read16(offset); }
+    auto fileRead(uint8_t index, uint8_t offset, TreatAs32Bit) const noexcept { return files_[index].read32(offset); }
     void fileWrite(uint8_t index, uint8_t offset, uint8_t value, TreatAs8Bit) noexcept { files_[index].write8(offset, value); }
     void fileWrite(uint8_t index, uint8_t offset, uint16_t value, TreatAs16Bit) noexcept { files_[index].write16(offset, value); }
     void fileWrite(uint8_t index, uint8_t offset, uint32_t value, TreatAs32Bit) noexcept { files_[index].write32(offset, value); }
@@ -292,7 +247,7 @@ private:
             // do nothing
         }
     }
-    uint8_t ctlRead(uint8_t offset, TreatAs8Bit) noexcept {
+    uint8_t ctlRead(uint8_t offset, TreatAs8Bit) const noexcept {
         if (offset < 80) {
             return sdCardPath_[offset];
         } else {
@@ -300,9 +255,9 @@ private:
             return 0;
         }
     }
-    uint16_t ctlRead(uint8_t offset, TreatAs16Bit) noexcept {
+    uint16_t ctlRead(uint8_t offset, TreatAs16Bit) const noexcept {
         if (offset < 80) {
-            return SplitWord16(reinterpret_cast<uint16_t*>(sdCardPath_)[offset >> 1]).getWholeValue();
+            return SplitWord16(reinterpret_cast<const uint16_t*>(sdCardPath_)[offset >> 1]).getWholeValue();
         } else {
             using T = SDCardFileSystemRegisters;
             switch (static_cast<T>(offset)) {
@@ -331,9 +286,9 @@ private:
             }
         }
     }
-    uint32_t ctlRead(uint8_t offset, TreatAs32Bit) noexcept {
+    uint32_t ctlRead(uint8_t offset, TreatAs32Bit) const noexcept {
         if (offset < 80) {
-            return SplitWord32(reinterpret_cast<uint32_t*>(sdCardPath_)[offset >> 2]).getWholeValue();
+            return SplitWord32(reinterpret_cast<const uint32_t*>(sdCardPath_)[offset >> 2]).getWholeValue();
         } else {
             using T = SDCardFileSystemRegisters;
             switch (static_cast<T>(offset)) {
@@ -359,7 +314,7 @@ private:
     }
     template<typename T>
     typename T::StorageType
-    readGeneric(uint32_t address) noexcept {
+    readGeneric(uint32_t address) const noexcept {
         if (auto targetPage = static_cast<uint8_t>(address >> 8), targetOffset = static_cast<uint8_t>(address); targetPage) {
             return ctlRead(targetOffset, T{});
         } else if (targetPage >= FileStartPage && targetPage < FileEndPage) {
@@ -432,9 +387,9 @@ private:
     SplitWord32 clusterCount_ {0};
     SplitWord32 volumeSectorCount_ {0};
     uint16_t bytesPerSector_ = 0;
-    uint16_t numberOfOpenFiles_ = 0;
+    mutable uint16_t numberOfOpenFiles_ = 0;
     char sdCardPath_[81] = { 0 };
-    OpenFileHandle files_[MaximumNumberOfOpenFiles];
+    mutable OpenFileHandle files_[MaximumNumberOfOpenFiles];
     bool makeMissingParentDirectories_ = false;
     uint16_t filePermissions_ = 0;
     bool cardMounted_ = false;

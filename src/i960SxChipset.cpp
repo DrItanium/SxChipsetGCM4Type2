@@ -30,6 +30,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 /// - C++17
 /// Board Platform: MightyCore
 #include <SPI.h>
+#include <Wire.h>
 #include <SdFat.h>
 #include <tuple>
 #include "Pinout.h"
@@ -81,6 +82,7 @@ SystemRam_t theRAM;
 CoreChipsetFeatures configurationSpace;
 UART0Interface uart0;
 SPIMemorySpace spi0;
+TheSDInterface sdcard_(SD);
 
 template<bool inDebugMode>
 void invocationBody() noexcept {
