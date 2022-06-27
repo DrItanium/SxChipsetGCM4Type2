@@ -257,6 +257,7 @@ void setup() {
     //theCache.begin();
     // purge the cache pages
     Serial.println(F("i960Sx chipset bringup"));
+    sdcard_.begin();
     ProcessorInterface::begin();
     BackingMemoryStorage_t::begin();
     setupMemoryMap();
