@@ -28,7 +28,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #ifndef I960SXCHIPSET_CORECHIPSETFEATURES_H
 #define I960SXCHIPSET_CORECHIPSETFEATURES_H
-#include "ProcessorSerializer.h"
+#include "ProcessorInterface.h"
 #include "SDCardInterface.h"
 #include "Serial0Interface.h"
 #include "MemorySpace.h"

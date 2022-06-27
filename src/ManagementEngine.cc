@@ -27,7 +27,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
 #include "ManagementEngine.h"
 #include "Pinout.h"
-#include "ProcessorSerializer.h"
+#include "ProcessorInterface.h"
 
 namespace ManagementEngine
 {

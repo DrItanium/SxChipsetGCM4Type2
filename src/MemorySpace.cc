@@ -27,7 +27,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
 #include "MemorySpace.h"
 #include "ManagementEngine.h"
-#include "ProcessorSerializer.h"
+#include "ProcessorInterface.h"
 #include <functional>
 
 void

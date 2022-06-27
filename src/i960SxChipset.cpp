@@ -40,7 +40,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "SetAssociativeRandPLRUCacheSets.h"
 #include "SinglePoolCache.h"
 
-#include "ProcessorSerializer.h"
+#include "ProcessorInterface.h"
 #include "CoreChipsetFeatures.h"
 #include "SDCardAsRam.h"
 #include "TaggedCacheAddress.h"

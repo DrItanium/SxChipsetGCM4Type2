@@ -32,7 +32,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "Pinout.h"
 #include "TaggedCacheAddress.h"
 #include "CacheEntry.h"
-#include "ProcessorSerializer.h"
+#include "ProcessorInterface.h"
 
 template<template<auto, auto, typename, bool> typename C, uint32_t numEntries, byte numOffsetBits, typename T, bool debugMode = false, bool directlyUseEntryCount = false>
 class SinglePoolCache {
