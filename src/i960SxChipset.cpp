@@ -175,6 +175,9 @@ void installBootImage() noexcept {
 // the setup routine runs once when you press reset:
 constexpr auto TestReadyPinSignal = false;
 void setupMemoryMap();
+Uart Serial2(&SERCOM_SERIAL2, PIN_SERIAL2_RX, PIN_SERIAL2_TX, PAD_SERIAL2_RX, PAD_SERIAL2_TX);
+Uart Serial3(&SERCOM_SERIAL3, PIN_SERIAL3_RX, PIN_SERIAL3_TX, PAD_SERIAL3_RX, PAD_SERIAL3_TX);
+Uart Serial4(&SERCOM_SERIAL4, PIN_SERIAL4_RX, PIN_SERIAL4_TX, PAD_SERIAL4_RX, PAD_SERIAL4_TX);
 void setup() {
     ManagementEngine::configure();
     ManagementEngine::holdInReset();
@@ -195,6 +198,11 @@ void setup() {
     while (!Serial) {
         delay(10);
     }
+    Serial1.begin(115200);
+    Serial2.begin(115200);
+    Serial3.begin(115200);
+    Serial4.begin(115200);
+
     SPI.begin();
     Wire.begin();
     configurePins<
