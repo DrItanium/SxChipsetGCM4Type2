@@ -63,7 +63,7 @@ constexpr auto ValidateTransferDuringInstall = TargetBoard::validateTransferDuri
  */
 constexpr auto UseIOExpanderAddressLineInterrupts = TargetBoard::useIOExpanderAddressLineInterrupts();
 //using TheDisplayInterface = DisplayInterface<DisplayBaseAddress>;
-using TheSDInterface = SDCardInterface<MaximumNumberOfOpenFiles, SDBaseAddress>;
+using TheSDInterface = SDCardInterface<MaximumNumberOfOpenFiles>;
 //using TheConsoleInterface = Serial0Interface<Serial0BaseAddress, CompileInAddressDebuggingSupport, AddressDebuggingEnabledOnStartup>;
 using UART0Interface = Serial0Interface;
 using ConfigurationSpace = CoreChipsetFeatures;

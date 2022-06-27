@@ -36,6 +36,9 @@ template<Address maxFiles>
 class SDCardInterface : public SizedMemorySpace {
 public:
     static constexpr auto MaximumNumberOfOpenFiles = maxFiles;
+    static constexpr auto CTLPage = 0;
+    static constexpr auto FileStartPage = CTLPage + 1;
+    static constexpr auto FileEndPage = FileStartPage + MaximumNumberOfOpenFiles;
     enum class SDCardFileSystemRegisters : uint8_t {
 #define TwoByteEntry(Prefix) Prefix ## 0, Prefix ## 1
 #define FourByteEntry(Prefix) \
@@ -208,47 +211,57 @@ private:
             }
         }
     }
-    void ctlWrite(uint8_t offset, LoadStoreStyle lss, SplitWord16 value) noexcept {
+    struct TreatAs16Bit { using StorageType = uint16_t; };
+    struct TreatAs32Bit { using StorageType = uint32_t; };
+    struct TreatAs8Bit { using StorageType = uint8_t; };
+    auto fileRead(uint8_t index, uint8_t offset, TreatAs8Bit) noexcept { return files_[index].read8(offset); }
+    auto fileRead(uint8_t index, uint8_t offset, TreatAs16Bit) noexcept { return files_[index].read16(offset); }
+    auto fileRead(uint8_t index, uint8_t offset, TreatAs32Bit) noexcept { return files_[index].read32(offset); }
+    void fileWrite(uint8_t index, uint8_t offset, uint8_t value, TreatAs8Bit) noexcept { files_[index].write8(offset, value); }
+    void fileWrite(uint8_t index, uint8_t offset, uint16_t value, TreatAs16Bit) noexcept { files_[index].write16(offset, value); }
+    void fileWrite(uint8_t index, uint8_t offset, uint32_t value, TreatAs32Bit) noexcept { files_[index].write32(offset, value); }
+    void ctlWrite(uint8_t offset, uint8_t value, TreatAs8Bit) noexcept {
         if (offset < 80) {
-            if (lss == LoadStoreStyle::Upper8) {
-                sdCardPath_[offset + 1] = static_cast<char>(value.bytes[1]);
-            } else if (lss == LoadStoreStyle::Lower8) {
-                sdCardPath_[offset] = static_cast<char>(value.bytes[0]);
-            } else {
-                sdCardPath_[offset] = static_cast<char>(value.bytes[0]);
-                sdCardPath_[offset+1] = static_cast<char>(value.bytes[1]);
-            }
+            sdCardPath_[offset] = static_cast<char>(value);
+        } else {
+            // do nothing
+        }
+    }
+    void ctlWrite(uint8_t offset, uint16_t value, TreatAs16Bit) noexcept {
+        if (offset < 80) {
+            sdCardPath_[offset] = static_cast<char>(value);
+            sdCardPath_[offset+1] = static_cast<char>(value >> 8);
         } else {
             using T = SDCardFileSystemRegisters;
             switch (static_cast<T>(offset)) {
                 case T::MakeMissingParentDirectories:
-                    makeMissingParentDirectories_ = value.getWholeValue() != 0;
+                    makeMissingParentDirectories_ = value != 0;
                     break;
                 case T::FilePermissions:
-                    filePermissions_ = value.getWholeValue();
+                    filePermissions_ = value;
                     break;
                 case T::OpenReadWrite:
-                    if (value.getWholeValue() != 0) {
+                    if (value != 0) {
                         filePermissions_ |= O_RDWR;
                     }
                     break;
                 case T::OpenReadOnly:
-                    if (value.getWholeValue() != 0) {
+                    if (value != 0) {
                         filePermissions_ |= O_RDONLY;
                     }
                     break;
                 case T::OpenWriteOnly:
-                    if (value.getWholeValue() != 0) {
+                    if (value != 0) {
                         filePermissions_ |= O_WRITE;
                     }
                     break;
                 case T::CreateFileIfMissing:
-                    if (value.getWholeValue() != 0) {
+                    if (value != 0) {
                         filePermissions_ |= O_CREAT;
                     }
                     break;
                 case T::ClearFileContentsOnOpen:
-                    if (value.getWholeValue() != 0) {
+                    if (value != 0) {
                         filePermissions_ |= O_TRUNC;
                     }
                     break;
@@ -256,10 +269,10 @@ private:
                     // 0 means unmount,
                     // 1 means mount
                     // other values are ignored
-                    if (value.getWholeValue() == 0) {
+                    if (value == 0) {
                         // unmount
                         unmountSDCard();
-                    } else if (value.getWholeValue() == 1) {
+                    } else if (value == 1) {
                         // mount
                         (void)tryMountSDCard();
                     }
@@ -269,11 +282,92 @@ private:
             }
         }
     }
-    uint16_t fileRead(uint8_t index, uint8_t offset, LoadStoreStyle lss) noexcept {
-        return files_[index].read(offset, lss);
+    void ctlWrite(uint8_t offset, uint32_t value, TreatAs32Bit) noexcept {
+        if (offset <= 76) {
+            sdCardPath_[offset] = static_cast<char>(value);
+            sdCardPath_[offset+1] = static_cast<char>(value >> 8);
+            sdCardPath_[offset+2] = static_cast<char>(value >> 16);
+            sdCardPath_[offset+3] = static_cast<char>(value >> 24);
+        } else {
+            // do nothing
+        }
     }
-    void fileWrite(uint8_t index, uint8_t offset, LoadStoreStyle lss, SplitWord16 value) {
-        files_[index].write(offset, lss, value);
+    uint8_t ctlRead(uint8_t offset, TreatAs8Bit) noexcept {
+        if (offset < 80) {
+            return sdCardPath_[offset];
+        } else {
+            /// @todo does it make sense to return parts of values?
+            return 0;
+        }
+    }
+    uint16_t ctlRead(uint8_t offset, TreatAs16Bit) noexcept {
+        if (offset < 80) {
+            return SplitWord16(reinterpret_cast<uint16_t*>(sdCardPath_)[offset >> 1]).getWholeValue();
+        } else {
+            using T = SDCardFileSystemRegisters;
+            switch (static_cast<T>(offset)) {
+                case T::OpenPort:
+                    return tryOpenFile();
+                case T::MakeDirectoryPort:
+                    return tryMakeDirectory(makeMissingParentDirectories_);
+                case T::ExistsPort:
+                    return exists();
+                case T::RemovePort:
+                    return remove();
+                case T::SDBytesPerSector:
+                    return bytesPerSector_;
+                case T::MaximumNumberOfOpenFiles:
+                    return MaximumNumberOfOpenFiles;
+                case T::NumberOfOpenFiles:
+                    return numberOfOpenFiles_;
+                case T::MakeMissingParentDirectories:
+                    return makeMissingParentDirectories_;
+                case T::FilePermissions:
+                    return filePermissions_;
+                case T::MountCTL:
+                    return cardMounted_ ? 0xFFFF : 0;
+                default:
+                    return 0;
+            }
+        }
+    }
+    uint32_t ctlRead(uint8_t offset, TreatAs32Bit) noexcept {
+        if (offset < 80) {
+            return SplitWord32(reinterpret_cast<uint32_t*>(sdCardPath_)[offset >> 2]).getWholeValue();
+        } else {
+            using T = SDCardFileSystemRegisters;
+            switch (static_cast<T>(offset)) {
+                case T::SDClusterCountLower:
+                    return clusterCount_.getWholeValue();
+                case T::SDVolumeSectorCountLower:
+                    return volumeSectorCount_.getWholeValue();
+                default:
+                    return 0;
+            }
+        }
+    }
+    template<typename T>
+    void
+    writeGeneric(uint32_t address, typename T::StorageType value) noexcept {
+        if (auto targetPage = static_cast<uint8_t>(address >> 8), targetOffset = static_cast<uint8_t>(address); targetPage) {
+            ctlWrite(targetOffset, value, T{});
+        } else if (targetPage >= FileStartPage && targetPage < FileEndPage) {
+            fileWrite(targetPage - FileStartPage, targetOffset, value, T{});
+        } else {
+
+        }
+    }
+    template<typename T>
+    typename T::StorageType
+    readGeneric(uint32_t address) noexcept {
+        if (auto targetPage = static_cast<uint8_t>(address >> 8), targetOffset = static_cast<uint8_t>(address); targetPage) {
+            return ctlRead(targetOffset, T{});
+        } else if (targetPage >= FileStartPage && targetPage < FileEndPage) {
+            return fileRead(targetPage - FileStartPage, targetOffset, T{});
+        } else {
+            return 0;
+
+        }
     }
 public:
     void begin() noexcept {
@@ -314,6 +408,24 @@ public:
         }
     }
 #endif
+    void write8(uint32_t address, uint8_t value) noexcept override {
+        writeGeneric<TreatAs8Bit>(address, value);
+    }
+    void write16(uint32_t address, uint16_t value) noexcept override {
+        writeGeneric<TreatAs16Bit>(address, value);
+    }
+    void write32(uint32_t address, uint32_t value) noexcept override {
+        writeGeneric<TreatAs32Bit>(address, value);
+    }
+    uint8_t read8(uint32_t address) const noexcept override {
+        return readGeneric<TreatAs8Bit>(address);
+    }
+    uint16_t read16(uint32_t address) const noexcept override {
+        return readGeneric<TreatAs16Bit>(address);
+    }
+    uint32_t read32(uint32_t address) const noexcept override {
+        return readGeneric<TreatAs32Bit>(address);
+    }
 
 private:
     SdFat& backingStore_;
