@@ -42,4 +42,12 @@ public:
     ~SinglePageMemorySpace() override = default;
 };
 
+class NullMemorySpace : public SinglePageMemorySpace {
+public:
+    using Parent = SinglePageMemorySpace;
+    using Self = NullMemorySpace;
+    using Parent::Parent;
+    ~NullMemorySpace() override = default;
+
+};
 #endif //SXCHIPSETGCM4TYPE2_SINGLEPAGEMEMORYSPACE_H

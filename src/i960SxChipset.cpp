@@ -83,6 +83,7 @@ CoreChipsetFeatures configurationSpace;
 UART0Interface uart0;
 SPIMemorySpace spi0;
 TheSDInterface sdcard_(SD);
+NullMemorySpace null_;
 
 template<bool inDebugMode>
 void invocationBody() noexcept {
@@ -308,16 +309,23 @@ setupMemoryMap() {
     // originally the sdcard file interface was designed to be placed independently of the ctl register
     // however, now it is placed contiguously
     auto sdcardFileInterface = map(0xFE00'0100, sdcard_);
-    auto spi = map(chipsetDevicesStart + 0xE'FE00, spi0);
-    auto serial = map(chipsetDevicesStart + 0xE'FF00, uart0);
-    static_assert((0xFFFE'FF00 + (1 << 8)) == 0xFFFF'0000);
     auto configSpaceMapping = map(chipsetDevicesStart + 0xF'0000, configurationSpace);
+    auto serial = map(chipsetDevicesStart + 0xE'FF00, uart0);
+    auto spi = map(chipsetDevicesStart + 0xE'FE00, spi0);
+    // null_ is a fake device so just define it
+    auto auxDisplayInterface = map(chipsetDevicesStart + 0xE'FD00, null_);
+    auto displayInterface = map(chipsetDevicesStart + 0xE'FC00, null_);
+    auto rtcInterface = map(chipsetDevicesStart + 0xE'FB00, null_);
+    // make sure that the layout
     configurationSpace.addDevice(serial);
-    configurationSpace.addDevice(spi);
     configurationSpace.addDevice(sdcardInterface);
     // this is a bit of a hack because previously I was assuming that the file interface could be anywhere!
     // but in reality it is not important
     configurationSpace.addDevice(sdcardFileInterface);
+    configurationSpace.addDevice(auxDisplayInterface) ;
+    configurationSpace.addDevice(displayInterface);
+    configurationSpace.addDevice(rtcInterface);
+    configurationSpace.addDevice(spi);
     fullSpace.emplace_back(memory);
     fullSpace.emplace_back(configSpaceMapping);
     fullSpace.emplace_back(serial);
