@@ -1,0 +1,6 @@
+boot.rom
+boot.dat
+boot.sys
+
+*.swp
+*.swo

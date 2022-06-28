@@ -7,7 +7,7 @@
 #i960-elf-objcopy --only-section=.data -O binary cmake-build-debug/hitagimon boot.dat
 # just make a new image that will be loaded into psram on boot up
 i960-elf-objcopy --pad-to=0x800000 --only-section=.text --only-section=.data --only-section=.bss -O binary cmake-build-debug/hitagimon boot.sys
-split -x -n 2 --additional-suffix=.sys boot.sys rom
+#split -x -n 2 --additional-suffix=.sys boot.sys rom
 # tell the user to execute these commands since I can't easily control the upload process across two chips
-echo "minipro -p \"W25Q32JV\" -w rom00.sys"
-echo "minipro -p \"W25Q32JV\" -w rom01.sys"
+#echo "minipro -p \"W25Q32JV\" -w rom00.sys"
+#echo "minipro -p \"W25Q32JV\" -w rom01.sys"
