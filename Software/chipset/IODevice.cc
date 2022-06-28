@@ -2,8 +2,8 @@
 // Created by jwscoggins on 5/3/21.
 //
 
-#include "IODevice.h"
-#include "ChipsetInteract.h"
+#include "chipset/IODevice.h"
+#include "chipset/ChipsetInteract.h"
 #include <string.h>
 #include <errno.h>
 #include <fcntl.h>

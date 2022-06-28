@@ -26,7 +26,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 // Created by jwscoggins on 6/16/22.
 //
 
-#include "GPIO.h"
+#include "chipset/GPIO.h"
 GPIOEngine::GPIOEngine() : raw_(memory<GPIOEngine::Registers>(getGPIOEngineBaseAddress())), initialized_(false) { }
 GPIOEngine::~GPIOEngine() {}
 
