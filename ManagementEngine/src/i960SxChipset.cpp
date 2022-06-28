@@ -112,70 +112,50 @@ private:
     byte version_;
     byte maxNumberOfCyclesBeforePause_;
 };
-constexpr TargetConfiguration version1 {
-        TargetConfiguration::Flags::HasExternalClockSource
-        | TargetConfiguration::Flags::EnableCommunicationChannel
-        | TargetConfiguration::Flags::BuiltinInterruptController
-        | TargetConfiguration::Flags::InTransactionAndBootSuccessfulAreSwapped
-        //| TargetConfiguration::Flags::EnableDebugConsole
-        ,
-        1 /* version */,
-        64 /* delay */ };
-constexpr TargetConfiguration version1WithDebug {
-        TargetConfiguration::Flags::HasExternalClockSource
-        | TargetConfiguration::Flags::EnableCommunicationChannel
-        | TargetConfiguration::Flags::BuiltinInterruptController
-        | TargetConfiguration::Flags::InTransactionAndBootSuccessfulAreSwapped
-        | TargetConfiguration::Flags::EnableDebugConsole
-        | TargetConfiguration::Flags::WaitForSerialConnect
-        ,
-        1 /* version */,
-        64 /* delay */ };
-constexpr TargetConfiguration v1TestReadyPin {
-        TargetConfiguration::Flags::HasExternalClockSource
-        | TargetConfiguration::Flags::EnableCommunicationChannel
-        | TargetConfiguration::Flags::BuiltinInterruptController
-        | TargetConfiguration::Flags::InTransactionAndBootSuccessfulAreSwapped
-        | TargetConfiguration::Flags::EnableDebugConsole
-        | TargetConfiguration::Flags::WaitForSerialConnect
-        | TargetConfiguration::Flags::TestReadyPinMode
-        ,
-        1 /* version */,
-        64 /* delay */ };
 constexpr TargetConfiguration version2GCM {
     TargetConfiguration::Flags::HandleResetManually,
     2,
     64
 };
-constexpr TargetConfiguration currentConfiguration = version1;
+constexpr TargetConfiguration currentConfiguration = version2GCM;
 enum class i960Pinout : int {
-    SRC0_TRIGGER_INT1 = PIN_PF0,
-    SRC1_TRIGGER_INT1 = PIN_PF1,
-    BUS_LOCKED = PIN_PF2,
-    INT1 = PIN_PF3,
-    LOCK = PIN_PF4,
-    LOCK_REQUESTED = PIN_PF5,
-    BOOT_SUCCESSFUL = PIN_PE0,
-    DO_CYCLE = PIN_PE1,
-    BURST_LAST_ME = PIN_PE2,
-    IN_TRANSACTION = PIN_PE3,
-    SRC0_TRIGGER_INT3 = PIN_PC0,
-    SRC1_TRIGGER_INT3 = PIN_PC1,
-    READY_IN = PIN_PC2,
-    INT3 = PIN_PC3,
-    CLK2 = PIN_PA0,
-    SRC0_TRIGGER_INT0 = PIN_PA1,
-    SRC1_TRIGGER_INT0 = PIN_PA7,
-    INT0 = PIN_PA3,
-    CLK = PIN_PA2,
-    SRC0_TRIGGER_INT2 = PIN_PD0,
-    SRC1_TRIGGER_INT2 = PIN_PD1,
-    ME_BOOTED = PIN_PD2,
-    INT2 = PIN_PD3,
-    BLAST = PIN_PD4,
-    DEN = PIN_PD5,
-    FAIL = PIN_PD6,
-    READY960 = PIN_PD7,
+    // PORT A
+    ME_PA0 = PIN_PA0,
+    ME_PA1 = PIN_PA1,
+    ME_PA2 = PIN_PA2,
+    CLK = PIN_PA3,
+    ME_PA4 = PIN_PA4,
+    ME_PA5 = PIN_PA5,
+    ME_PA6 = PIN_PA6,
+    CLK2 = PIN_PA7,
+    // PORT C
+    PIC_BOOTED_ = PIN_PC0,
+    CHIPSET_BOOTED_ = PIN_PC1,
+    ME_PC2 = PIN_PC2,
+    RESET960_ = PIN_PC3,
+    UPDI_TXD = PIN_PC4,
+    UPDI_RXD = PIN_PC5,
+    // PORT D
+    BE1_ = PIN_PD0,
+    BE0_ = PIN_PD1,
+    BLAST_ = PIN_PD2,
+    FAIL_SIG = PIN_PD3,
+    FAIL_SYNCD = PIN_PD4,
+    LOCK_ = PIN_PD5,
+    CLK_READY_ = PIN_PD6,
+    ME_PD7 = PIN_PD7,
+    //
+    BurstLast_ = PIN_PE0,
+    InTransaction_ = PIN_PE1,
+    DoCycle_ = PIN_PE2,
+    BootSuccessful_ = PIN_PE3,
+    //
+    ME_Ready = PIN_PF0,
+    ME_PF1 = PIN_PF1,
+    ME_PF2 = PIN_PF2,
+    READY960 = PIN_PF3, // connected to external inverter
+    READY_CHIPSET_ = PIN_PF4, // comes from chipset
+    DEN960 = PIN_PF5,
 };
 
 enum class PinStyle {
@@ -275,34 +255,13 @@ public:
 };
 
 
-using DenPin = InputPin<i960Pinout::DEN, LOW, HIGH>;
-using BlastPin = InputPin<i960Pinout::BLAST, LOW, HIGH>;
-using FailPin = InputPin<i960Pinout::FAIL, HIGH, LOW>;
-using Src0Trigger3Pin = InputPin<i960Pinout::SRC0_TRIGGER_INT3, LOW, HIGH>;
-using Src1Trigger3Pin = InputPin<i960Pinout::SRC1_TRIGGER_INT3, LOW, HIGH>;
-using Src0Trigger2Pin = InputPin<i960Pinout::SRC0_TRIGGER_INT2, LOW, HIGH>;
-using Src1Trigger2Pin = InputPin<i960Pinout::SRC1_TRIGGER_INT2, LOW, HIGH>;
-using Src0Trigger1Pin = InputPin<i960Pinout::SRC0_TRIGGER_INT1, LOW, HIGH>;
-using Src1Trigger1Pin = InputPin<i960Pinout::SRC1_TRIGGER_INT1, LOW, HIGH>;
-using Src0Trigger0Pin = InputPin<i960Pinout::SRC0_TRIGGER_INT0, LOW, HIGH>;
-using Src1Trigger0Pin = InputPin<i960Pinout::SRC1_TRIGGER_INT0, LOW, HIGH>;
-using LockRequestedPin = InputPin<i960Pinout::LOCK_REQUESTED, LOW, HIGH>;
-using ReadyInputPin = InputPin<i960Pinout::READY_IN, LOW, HIGH>;
-constexpr i960Pinout BootSuccessfulPinIndex = currentConfiguration.inTransactionAndBootSuccessfulSwapped() ? i960Pinout::IN_TRANSACTION : i960Pinout::BOOT_SUCCESSFUL;
-constexpr i960Pinout InTransactionPinIndex = currentConfiguration.inTransactionAndBootSuccessfulSwapped() ? i960Pinout::BOOT_SUCCESSFUL : i960Pinout::IN_TRANSACTION;
-using BootSuccessfulPin = OutputPin<BootSuccessfulPinIndex, HIGH, LOW>; // protocol assumed is active high
-using DoCyclePin = OutputPin<i960Pinout::DO_CYCLE, LOW, HIGH>;
-using BurstNext = OutputPin<i960Pinout::BURST_LAST_ME, HIGH, LOW>;
-using InTransactionPin = OutputPin<InTransactionPinIndex, LOW, HIGH>;
-using Int0Pin = OutputPin<i960Pinout::INT0, HIGH, LOW>;
-using Int1Pin = OutputPin<i960Pinout::INT1, HIGH, LOW>;
-using Int2Pin = OutputPin<i960Pinout::INT2, HIGH, LOW>;
-using Int3Pin = OutputPin<i960Pinout::INT3, HIGH, LOW>;
-using BootedPin = OutputPin<i960Pinout::ME_BOOTED, HIGH, LOW>;
-using ReadySyncPin = OutputPin<i960Pinout::READY960, LOW, HIGH>;
-using BusLockedPin = OutputPin<i960Pinout::BUS_LOCKED, LOW, HIGH>;
+using Den960 = InputPin<i960Pinout::DEN960, LOW, HIGH>;
+using BlastPin = InputPin<i960Pinout::BLAST_, LOW, HIGH>;
+using FailPin = InputPin<i960Pinout::FAIL_SYNCD, HIGH, LOW>;
+using FailOutPin = OutputPin<i960Pinout::FAIL_SIG, HIGH, LOW>;
+using LockPin = InputPin<i960Pinout::LOCK_, LOW, HIGH>;
+using BootSuccessfulPin = OutputPin<i960Pinout::BootSuccessful_, LOW, HIGH>;
 
-using LockPin = BidirectionalPin<i960Pinout::LOCK, LOW, HIGH>;
 
 template<typename ... pins>
 [[gnu::always_inline]]
@@ -316,23 +275,20 @@ inline void deassertPins() noexcept {
 }
 void
 setupPins() noexcept {
-    configurePins<FailPin, BlastPin , DenPin ,
-            LockRequestedPin , BusLockedPin ,
-            Int0Pin , Int1Pin , Int2Pin, Int3Pin,
-            InTransactionPin , DoCyclePin, BootSuccessfulPin , BurstNext ,
-            Src0Trigger0Pin , Src1Trigger0Pin ,
-            Src0Trigger1Pin , Src1Trigger1Pin ,
-            Src0Trigger2Pin , Src1Trigger2Pin ,
-            Src0Trigger3Pin , Src1Trigger3Pin ,
-            ReadySyncPin , ReadyInputPin >();
+    configurePins<FailPin,
+            BlastPin ,
+            Den960 ,
+            LockPin
+    >();
     // the lock pin is special as it is an open collector pin, we want to stay off of it as much as possible
-    LockPin::configure(OUTPUT);
-    LockPin::write(HIGH);
+    LockPin::configure(INPUT);
     // make all outputs deasserted
+#if 0
     deassertPins<Int0Pin, Int1Pin, Int2Pin, Int3Pin, ReadySyncPin,
             BootSuccessfulPin, InTransactionPin, DoCyclePin,
             BurstNext,
             BusLockedPin>();
+#endif
     /// @todo configure event system here
 }
 template<i960Pinout pin, decltype(HIGH) value>
