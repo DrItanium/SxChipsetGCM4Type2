@@ -83,6 +83,13 @@ CoreChipsetFeatures configurationSpace;
 UART0Interface uart0;
 SPIMemorySpace spi0;
 TheSDInterface sdcard_(SD);
+Uart Serial2(&SERCOM_SERIAL2, PIN_SERIAL2_RX, PIN_SERIAL2_TX, PAD_SERIAL2_RX, PAD_SERIAL2_TX);
+Uart Serial3(&SERCOM_SERIAL3, PIN_SERIAL3_RX, PIN_SERIAL3_TX, PAD_SERIAL3_RX, PAD_SERIAL3_TX);
+Uart Serial4(&SERCOM_SERIAL4, PIN_SERIAL4_RX, PIN_SERIAL4_TX, PAD_SERIAL4_RX, PAD_SERIAL4_TX);
+auto& UnoUart = Serial1;
+auto& PicUart = Serial4;
+auto& Feather0Uart = Serial2;
+auto& Feather1Uart = Serial3;
 //NullMemorySpace null_;
 
 template<bool inDebugMode>
@@ -173,15 +180,7 @@ void installBootImage() noexcept {
 
 
 // the setup routine runs once when you press reset:
-constexpr auto TestReadyPinSignal = false;
 void setupMemoryMap();
-Uart Serial2(&SERCOM_SERIAL2, PIN_SERIAL2_RX, PIN_SERIAL2_TX, PAD_SERIAL2_RX, PAD_SERIAL2_TX);
-Uart Serial3(&SERCOM_SERIAL3, PIN_SERIAL3_RX, PIN_SERIAL3_TX, PAD_SERIAL3_RX, PAD_SERIAL3_TX);
-Uart Serial4(&SERCOM_SERIAL4, PIN_SERIAL4_RX, PIN_SERIAL4_TX, PAD_SERIAL4_RX, PAD_SERIAL4_TX);
-auto& UnoUart = Serial1;
-auto& PicUart = Serial4;
-auto& Feather0Uart = Serial2;
-auto& Feather1Uart = Serial3;
 void
 setupDataLines() {
     DigitalPin<i960Pinout::Data0>::configure();
@@ -253,17 +252,6 @@ void setup() {
     setupMux();
     setupDataLines();
     // all of these pins need to be pulled high
-    if constexpr (TestReadyPinSignal) {
-        Serial.println("TEST READY SIGNAL PIN MODE");
-        while (true) {
-            Serial.println("ASSERT READY!");
-            DigitalPin<i960Pinout::Ready>::assertPin();
-            delay(1000);
-            Serial.println("DEASSERT READY!");
-            DigitalPin<i960Pinout::Ready>::deassertPin();
-            delay(1000);
-        }
-    }
     // setup the pins that could be attached to an io expander separately
     //theCache.begin();
     // purge the cache pages
