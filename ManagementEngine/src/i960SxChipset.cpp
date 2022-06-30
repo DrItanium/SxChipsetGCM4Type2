@@ -140,7 +140,7 @@ enum class i960Pinout : int {
     BE0_ = PIN_PD1,
     BLAST_ = PIN_PD2,
     FAIL_SIG = PIN_PD3,
-    FAIL_SYNCD = PIN_PD4,
+    FAIL = PIN_PD4,
     LOCK_ = PIN_PD5,
     CLK_READY_ = PIN_PD6,
     ME_PD7 = PIN_PD7,
@@ -153,7 +153,7 @@ enum class i960Pinout : int {
     ME_Ready = PIN_PF0,
     ME_PF1 = PIN_PF1,
     ME_PF2 = PIN_PF2,
-    READY960 = PIN_PF3, // connected to external inverter
+    READY960 = PIN_PF3, // connected to external inverter, CCL connector
     READY_CHIPSET_ = PIN_PF4, // comes from chipset
     DEN960 = PIN_PF5,
 };
@@ -257,11 +257,19 @@ public:
 
 using Den960 = InputPin<i960Pinout::DEN960, LOW, HIGH>;
 using BlastPin = InputPin<i960Pinout::BLAST_, LOW, HIGH>;
-using FailPin = InputPin<i960Pinout::FAIL_SYNCD, HIGH, LOW>;
+using FailPin = InputPin<i960Pinout::FAIL, HIGH, LOW>;
 using FailOutPin = OutputPin<i960Pinout::FAIL_SIG, HIGH, LOW>;
 using LockPin = InputPin<i960Pinout::LOCK_, LOW, HIGH>;
 using BootSuccessfulPin = OutputPin<i960Pinout::BootSuccessful_, LOW, HIGH>;
-
+using ChipsetBootedPin = InputPin<i960Pinout::CHIPSET_BOOTED_, LOW, HIGH>;
+using PICBootedPin = InputPin<i960Pinout::PIC_BOOTED_, LOW, HIGH>;
+using ClockReady = OutputPin<i960Pinout::CLK_READY_, LOW, HIGH>;
+using DoCyclePin = OutputPin<i960Pinout::DoCycle_, LOW, HIGH>;
+using ReadySyncPin = OutputPin<i960Pinout::ME_Ready, LOW, HIGH>;
+using ReadyInputPin = OutputPin<i960Pinout::READY_CHIPSET_, LOW, HIGH>;
+using InTransactionPin = OutputPin<i960Pinout::InTransaction_, LOW, HIGH>;
+using BurstNext = OutputPin<i960Pinout::BurstLast_, HIGH, LOW>;
+using ResetPin = OutputPin<i960Pinout::RESET960_, LOW, HIGH>;
 
 template<typename ... pins>
 [[gnu::always_inline]]
@@ -278,18 +286,21 @@ setupPins() noexcept {
     configurePins<FailPin,
             BlastPin ,
             Den960 ,
-            LockPin
+            LockPin,
+            FailOutPin,
+            ChipsetBootedPin,
+            PICBootedPin,
+            DoCyclePin,
+            ReadySyncPin,
+            ReadyInputPin,
+            InTransactionPin,
+            BurstNext,
+            ResetPin
     >();
     // the lock pin is special as it is an open collector pin, we want to stay off of it as much as possible
     LockPin::configure(INPUT);
+    ResetPin ::assertPin();
     // make all outputs deasserted
-#if 0
-    deassertPins<Int0Pin, Int1Pin, Int2Pin, Int3Pin, ReadySyncPin,
-            BootSuccessfulPin, InTransactionPin, DoCyclePin,
-            BurstNext,
-            BusLockedPin>();
-#endif
-    /// @todo configure event system here
 }
 template<i960Pinout pin, decltype(HIGH) value>
 [[gnu::always_inline]]
@@ -344,187 +355,108 @@ terminateExecution() noexcept {
 [[noreturn]]
 void
 handleChecksumFail() noexcept {
-    if constexpr (currentConfiguration.debugConsoleActive()) {
-        DebugConsole.println("Checksum failure!");
-    }
     terminateExecution();
 }
 
 [[noreturn]]
 void
 tooManyCyclesForTransaction() noexcept {
-   if constexpr (currentConfiguration.debugConsoleActive())  {
-       DebugConsole.println("Too many cycles for the given transaction");
-   }
    terminateExecution();
 }
 
 void
 configureClockSource() noexcept {
-    byte clkBits = 0;
-    if constexpr (currentConfiguration.useExternalClockSource()) {
-        clkBits |= 0b0000'0011;
-    }
-    if constexpr (currentConfiguration.emitClockSignalOnPA7()) {
-        clkBits |= 0b1000'0000;
-    }
-    if constexpr (currentConfiguration.useExternalClockSource() || currentConfiguration.emitClockSignalOnPA7()) {
-        CCP = 0xD8;
-        CLKCTRL.MCLKCTRLA = clkBits;
-        CCP = 0xD8;
-    }
-    if constexpr (currentConfiguration.emitClockSignalOnPA7()) {
-        CCP = 0xD8;
-        CLKCTRL.MCLKCTRLA |= 0b0000'0010;
-        CCP = 0xD8;
-    }
+    ClockReady::configure();
+    ClockReady::deassertPin();
+    CCP = 0xD8;
+    CLKCTRL.MCLKCTRLA = 0b1000'0010;
+    CCP = 0xD8;
 }
-void configurePIC() noexcept {
-    if constexpr (currentConfiguration.debugConsoleActive()) {
-        DebugConsole.println("Setting up PIC!");
-    }
-    if constexpr (currentConfiguration.getVersion() == 1) {
-        // okay so configure the event and logic system for version 1
-        // connect 10MHz clock to all CCLs
-        if constexpr (currentConfiguration.debugConsoleActive()) {
-            DebugConsole.println("Setting up Event0!");
-        }
-        Event0.set_generator(gen0::pin_pa2);
-        Event0.set_generator(user::ccl0_event_b);
-        Event0.set_generator(user::ccl1_event_b);
-        Event0.set_generator(user::ccl2_event_b);
-        Event0.set_generator(user::ccl3_event_b);
-        if constexpr (currentConfiguration.debugConsoleActive()) {
-            DebugConsole.println("Setting up Event1!");
-        }
-        // use PA7 as a CCL input
-        Event1.set_generator(gen1::pin_pa7);
-        Event1.set_user(user::ccl0_event_a);
-        if constexpr (currentConfiguration.debugConsoleActive()) {
-            DebugConsole.println("Setting up CCLs!");
-        }
-        // setup Logic0 for int0 trigger but keep the truth table for the end
-        Logic0.edgedetect = edgedetect::enable;
-        Logic0.filter = filter::sync;
-        Logic0.input0 = in::event_a;
-        Logic0.input1 = in::input_pullup;
-        Logic0.input2 = in::event_b;
-        Logic0.clocksource = clocksource::in2;
-        Logic0.output = out::enable;
-        // do the same thing for the other CCLs
-        Logic1.edgedetect = edgedetect::enable;
-        Logic1.filter = filter::sync;
-        Logic1.input0 = in::input_pullup;
-        Logic1.input1 = in::input_pullup;
-        Logic1.input2 = in::event_b;
-        Logic1.clocksource = clocksource::in2;
-        Logic1.output = out::enable;
-        Logic2.edgedetect = edgedetect::enable;
-        Logic2.filter = filter::sync;
-        Logic2.input0 = in::input_pullup;
-        Logic2.input1 = in::input_pullup;
-        Logic2.input2 = in::event_b;
-        Logic2.output = out::enable;
-        Logic2.clocksource = clocksource::in2;
-        Logic3.edgedetect = edgedetect::enable;
-        Logic3.filter = filter::sync;
-        Logic3.input0 = in::input_pullup;
-        Logic3.input1 = in::input_pullup;
-        Logic3.input2 = in::event_b;
-        Logic3.clocksource = clocksource::in2;
-        Logic3.output = out::enable;
-        // now setup the truth tables
-        // So we should trigger an enable on all falling edges so
-        // 0b00010001 would be the standard setup so
-        // in2, in1, in0
-        // 0b000 -> 1 // we got a trigger of some kind
-        // 0b001 -> 1 // we got a trigger of some kind
-        // 0b010 -> 1 // we got a trigger of some kind
-        // 0b011 -> 0 // we got no trigger at all
-        // 0b100 -> 1 // we got a trigger of some kind
-        // 0b101 -> 1 // we got a trigger of some kind
-        // 0b110 -> 1 // we got a trigger of some kind
-        // 0b111 -> 0 // we got no trigger at all
-        Logic0.truth = 0b01110111;
-        Logic1.truth = 0b01110111;
-        Logic2.truth = 0b01110111;
-        Logic3.truth = 0b01110111;
-        // okay this starts up at the end
-        Logic0.init();
-        Logic1.init();
-        Logic2.init();
-        Logic3.init();
-        Event0.start();
-        Event1.start();
-    }
-    if constexpr (currentConfiguration.debugConsoleActive()) {
-        DebugConsole.println("PIC Configured!");
-    }
+void
+setup10MHz_CCL() noexcept {
+    // use CCL0 and CCL1 to generate a 10MHz clock source
+    // connect the output pin (pa7) to the event system which is the 20MHz clock
+    Event0.set_generator(gen0::pin_pa7);
+    Event0.set_user(user::ccl1_event_a);
+    Event0.set_user(user::ccl0_event_a);
+    Event1.set_generator(gen::ccl0_out);
+    Event1.set_user(user::ccl3_event_a);
+    Logic0.enable = true;
+    Logic0.input0 = in::feedback; // route the result of the flipflop back to CCL0 to generate the divider effect
+    Logic0.input1 = in::disable;
+    Logic0.input2 = in::disable;
+    Logic0.output = out::enable; // output the 10MHz clock from here
+    Logic0.truth = 0b01010101;
+    Logic0.sequencer = sequencer::jk_flip_flop;
+
+    Logic1.enable = true;
+    Logic1.input0 = in::event_a;
+    Logic1.input1 = in::disable;
+    Logic1.input2 = in::disable;
+    Logic1.output = out::disable;
+    Logic1.sequencer = sequencer::disable;
+    Logic1.truth = 0b01010101;
+    Logic0.init();
+    Logic1.init();
+    Event0.start();
+    Event1.start();
+}
+void
+setupFailSignalDetector_CCL() noexcept {
+    Logic2.enable = true;
+    // BE0, BE1, ~BLAST -> 0b011
+    Logic2.input0 = in::pin;
+    Logic2.input1 = in::pin;
+    Logic2.input2 = in::pin;
+    Logic2.output = out::enable;
+    Logic2.sequencer = sequencer::disable;
+    Logic2.truth = 0b0000'1000;
+    Logic2.init();
+}
+void
+setupReadySignal_CCL() noexcept {
+    Logic3.enable = true;
+    Logic3.input0 = in::pin;
+    Logic3.input1 = in::disable;
+    Logic3.input2 = in::event_a;
+    Logic3.output = out::enable;
+    Logic3.clocksource = clocksource::in2;
+    Logic3.edgedetect = edgedetect::enable;
+    Logic3.filter = filter::sync;
+    Logic3.truth = 0b0001'0001;
+    Logic3.init();
+}
+void
+setupCCL() noexcept {
+    setup10MHz_CCL();
+    setupFailSignalDetector_CCL();
+    setupReadySignal_CCL();
 }
 // the setup routine runs once when you press reset:
 void setup() {
     configureClockSource();
-    // the booted pin is the reset pin conceptually
-    BootedPin ::configure();
-    BootedPin ::assertPin();
     delay(2000);
-    if constexpr (currentConfiguration.debugConsoleActive()) {
-        DebugConsole.swap(1);
-        DebugConsole.begin(9600);
-        if constexpr (currentConfiguration.waitForSerialConnect()) {
-            while (!DebugConsole) {
-                delay(1);
-            }
-        }
-        DebugConsole.println("i960 Management Engine");
-    }
     setupPins();
-    if constexpr (currentConfiguration.enableCommunicationChannel()) {
-        CommunicationChannel.swap(1);
-        // okay so activate interrupt sources if it makes sense
-        /// @todo implement support for communication channel interrupts
-    }
-    if constexpr (currentConfiguration.hasPICBuiltin()) {
-        configurePIC();
-    }
-    if constexpr (currentConfiguration.enableReadyPulseMode()) {
-        while (true) {
-            ReadySyncPin::pulse();
-        }
-    }
-    if constexpr (currentConfiguration.enableTestReadyPinMode()) {
-        while (true) {
-            DebugConsole.print("Ready Input Pin Value: ");
-            DebugConsole.println(ReadyInputPin::read());
-        }
-    }
+    setupCCL();
+    // at this point all of the clock sources are ready
+    ClockReady::assertPin();
+    // now wait for chipset to boot and pic to be booted
+    while (ChipsetBootedPin::inputDeasserted() || PICBootedPin :: inputDeasserted());
+    ResetPin :: deassertPin();
     // no need to wait for the chipset to release control
-    BootedPin::deassertPin();
     while (FailPin::inputLow()) {
-        if (DenPin::inputAsserted()) {
-            if constexpr (currentConfiguration.debugConsoleActive()) {
-                DebugConsole.println("DEN Already Asserted!");
-            }
+        if (Den960::inputAsserted()) {
             break;
         }
     }
     while (FailPin::inputHigh()) {
-        if (DenPin::inputAsserted()) {
-            if constexpr (currentConfiguration.debugConsoleActive()) {
-                DebugConsole.println("DEN Already Asserted!");
-            }
+        if (Den960::inputAsserted()) {
             break;
         }
-    }
-    if constexpr (currentConfiguration.debugConsoleActive()) {
-        DebugConsole.println("Boot successful signalling!");
     }
     BootSuccessfulPin::assertPin();
     // at this point, if we ever go from low to high again then we have a checksum failure
     attachInterrupt(digitalPinToInterrupt(static_cast<int>(i960Pinout::FAIL)), handleChecksumFail, RISING);
-    if constexpr (currentConfiguration.debugConsoleActive()) {
-        DebugConsole.println("Interrupt attached!");
-    }
 }
 template<bool enable = currentConfiguration.enableOneCycleWaitStates()>
 [[gnu::always_inline]]
@@ -549,25 +481,13 @@ inline void waitForCycleEnd() noexcept {
 volatile byte numCycles = 0;
 [[noreturn]]
 void loop() {
-    if constexpr (currentConfiguration.debugConsoleActive()) {
-        DebugConsole.println("Entering Loop!");
-    }
     for (;;) {
-        if constexpr (currentConfiguration.debugConsoleActive()) {
-            DebugConsole.println("Loop Top!");
-        }
         // introduce some delay to make sure the bus has time to recover properly
         waitOneBusCycle();
         // okay so we need to wait for DEN to go low
-        while (DenPin::inputDeasserted());
-        if constexpr (currentConfiguration.debugConsoleActive()) {
-            DebugConsole.println("In Data Cycle!");
-        }
+        while (Den960::inputDeasserted());
 
         if (numCycles >= currentConfiguration.getMaxNumberOfCyclesBeforePause()) {
-            if constexpr (currentConfiguration.debugConsoleActive()) {
-                DebugConsole.println("Pausing!");
-            }
             // provide a pause/cooldown period after a new data request to make sure that the bus has time to "cool".
             // Failure to do so can cause very strange checksum failures / chipset faults to happen with the GCM4
             // this is not an issue since the i960 will wait until ready is signaled
@@ -579,9 +499,6 @@ void loop() {
         }
         // now do the logic
         {
-            if constexpr (currentConfiguration.debugConsoleActive()) {
-                DebugConsole.println("Asserting InTransaction!");
-            }
             // tell the chipset we are starting a transaction
             InTransactionPin :: assertPin();
             // okay now we need to emulate a wait loop to allow the chipset time to do its thing
@@ -596,18 +513,12 @@ void loop() {
                // this has the added benefit of providing proper synchronization between two different clock domains
                // for example, the GCM4 runs at 120MHz while this chip runs at 20MHz. Making the chipset wait provides implicit
                // synchronization
-               if constexpr (currentConfiguration.debugConsoleActive()) {
-                   DebugConsole.println("Asserting DoCycle!");
-               }
                DoCyclePin :: assertPin();
                // we have entered a new transaction so increment the counter
                // we want to count the number of transaction cycles
                ++numCycles;
                // now wait for the chipset to tell us that it has satisifed the current part of the transaction
                if (BlastPin::inputAsserted()) {
-                   if constexpr (currentConfiguration.debugConsoleActive()) {
-                       DebugConsole.println("Burst Last!");
-                   }
                    // if it turns out that blast is asserted then we break out of this loop and handle it specially
                    break;
                }
@@ -615,27 +526,15 @@ void loop() {
                waitForCycleEnd();
                // let the chipset know that the operation will continue
                {
-                   if constexpr (currentConfiguration.debugConsoleActive()) {
-                       DebugConsole.println("Assert Burst Next and Wait!");
-                   }
                    BurstNext::assertPin();
                    informCPUAndWait();
                    BurstNext::deassertPin();
-                   if constexpr (currentConfiguration.debugConsoleActive()) {
-                       DebugConsole.println("Waiting for next cycle!");
-                   }
                }
            }
            // the end of the current transaction needs to be straighline code
            waitForCycleEnd();
            // okay tell the chipset transaction complete
-            if constexpr (currentConfiguration.debugConsoleActive()) {
-                DebugConsole.println("Transaction Complete!");
-            }
             InTransactionPin :: deassertPin();
-        }
-        if constexpr (currentConfiguration.debugConsoleActive()) {
-            DebugConsole.println("Tell CPU about last part of transaction!");
         }
         // we have to tie off the transaction itself first
         // let the i960 know and then wait for the chipset to pull MCU READY high
