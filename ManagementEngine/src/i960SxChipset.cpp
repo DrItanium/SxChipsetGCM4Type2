@@ -113,7 +113,8 @@ private:
     byte maxNumberOfCyclesBeforePause_;
 };
 constexpr TargetConfiguration version2GCM {
-    TargetConfiguration::Flags::HandleResetManually,
+    TargetConfiguration::Flags::HandleResetManually |
+    TargetConfiguration::Flags::EnableOneCycleWaitStates,
     2,
     64
 };
