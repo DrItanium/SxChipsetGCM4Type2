@@ -48,7 +48,7 @@ namespace ManagementEngine
         return outcome;
     }
     void waitForBootSignal() noexcept {
-        while (DigitalPin<i960Pinout::SuccessfulBoot>::read() == LOW);
+        while (DigitalPin<i960Pinout::SuccessfulBoot>::isDeasserted());
         attachInterrupt(i960Pinout::SuccessfulBoot,
                         []() { signalHaltState("CHECKSUM FAILURE"); },
                         FALLING);
