@@ -189,7 +189,8 @@ void setup() {
 }
 volatile bool commandComplete = false;
 volatile byte opcode = 0;
-void loop() {
+void
+loop() {
     if (commandComplete) {
         switch (opcode)  {
             default:
