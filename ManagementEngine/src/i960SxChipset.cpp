@@ -370,7 +370,10 @@ configureClockSource() noexcept {
     ClockReady::configure();
     ClockReady::deassertPin();
     CCP = 0xD8;
-    CLKCTRL.MCLKCTRLA = 0b1000'0010;
+    CLKCTRL.MCLKCTRLA = 0b1000'0000;
+    CCP = 0xD8;
+    CCP = 0xD8;
+    CLKCTRL.OSC20MCTRLA |= 0b0000'0010;
     CCP = 0xD8;
 }
 void
@@ -388,7 +391,7 @@ setup10MHz_CCL() noexcept {
     Logic0.input2 = in::disable;
     Logic0.output = out::enable; // output the 10MHz clock from here
     Logic0.truth = 0b01010101;
-    Logic0.sequencer = sequencer::jk_flip_flop;
+    Logic0.sequencer = sequencer::d_flip_flop;
 
     Logic1.enable = true;
     Logic1.input0 = in::event_a;
