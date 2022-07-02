@@ -60,20 +60,6 @@ using Int0Output = ActiveHighOutputPin<PICPinout::INT0_OUT>;
 using Int1Output = ActiveHighOutputPin<PICPinout::INT1_OUT>;
 using Int2Output = ActiveHighOutputPin<PICPinout::INT2_OUT>;
 using Int3Output = ActiveHighOutputPin<PICPinout::INT3_OUT>;
-void
-setupPins() noexcept {
-    configurePins<ClockReadyPin,
-            ClkPin,
-            Clk2Pin,
-            BootedPin,
-            BufferEnablePin,
-            Int0Output,
-            Int1Output,
-            Int2Output,
-            Int3Output>();
-    deassertPins<ClockReadyPin, ClkPin, Clk2Pin>()
-}
-
 
 /**
  * @brief Abstract interface to the Serial object used as the communication and configuration channel
@@ -84,7 +70,6 @@ decltype(Serial)& CommunicationChannel = Serial;
 
 void
 configureClockSource() noexcept {
-    delay(1000);
     CCP = 0xD8;
     CLKCTRL.MCLKCTRLA |= 0b0000'0011;
     CCP = 0xD8;
@@ -95,6 +80,7 @@ configureClockSource() noexcept {
 }
 void
 configConfigure10MHzExternalSource() {
+    ClkPin::configure();
     Event0.set_generator(gen0::pin_pa2);
     Event0.set_generator(user::ccl0_event_b);
     Event0.set_generator(user::ccl1_event_b);
@@ -176,19 +162,45 @@ configurePIC() noexcept {
 }
 // the setup routine runs once when you press reset:
 void setup() {
-    configurePIC();
-    configureClockSource();
-    // the booted pin is the reset pin conceptually
-    BootedPin ::configure();
-    BootedPin ::assertPin();
-    delay(2000);
-    setupPins();
-    // no need to wait for the chipset to release control
+    BootedPin::configure();
     BootedPin::deassertPin();
+    ClockReadyPin::configure();
+
+    delay(1000);
+    while (ClockReadyPin::inputDeasserted()) {
+        delay(10);
+    }
+    configureClockSource();
+    configurePins<BufferEnablePin,
+            Int0Output,
+            Int1Output,
+            Int2Output,
+            Int3Output>();
+    deassertPins<BufferEnablePin,
+            Int0Output,
+            Int1Output,
+            Int2Output,
+            Int3Output>();
+    configurePIC();
+    CommunicationChannel.begin(115200);
+    // the booted pin is the reset pin conceptually
+    delay(2000);
+    // no need to wait for the chipset to release control
 }
-
-
+volatile bool commandComplete = false;
+volatile byte opcode = 0;
 void loop() {
-
+    if (commandComplete) {
+        switch (opcode)  {
+            default:
+                break;
+        }
+        opcode = 0;
+        commandComplete = false;
+    }
 }
 
+void
+serialEvent() {
+    // absorb the communication data from the chipset communication channel
+}
