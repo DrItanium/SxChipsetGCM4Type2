@@ -451,6 +451,8 @@ void setup() {
     ResetPin ::assertPin();
     TheI960InResetPin ::configure();
     TheI960InResetPin :: assertPin();
+    BootSuccessfulPin :: configure();
+    BootSuccessfulPin :: deassertPin();
     configureClockSource();
     delay(2000);
     setupPins();
