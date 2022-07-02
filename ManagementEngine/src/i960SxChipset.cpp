@@ -152,7 +152,7 @@ enum class i960Pinout : int {
     BootSuccessful_ = PIN_PE3,
     //
     ME_Ready = PIN_PF0,
-    ME_PF1 = PIN_PF1,
+    InCycle = PIN_PF1,
     ME_PF2 = PIN_PF2,
     READY960 = PIN_PF3, // connected to external inverter, CCL connector
     READY_CHIPSET_ = PIN_PF4, // comes from chipset
@@ -273,6 +273,7 @@ using BurstNext = OutputPin<i960Pinout::BurstLast_, HIGH, LOW>;
 using ResetPin = OutputPin<i960Pinout::RESET960_, LOW, HIGH>;
 using TheI960InResetPin = OutputPin<i960Pinout::ME_HOLDING_I960_IN_RESET, LOW, HIGH>;
 using TheI960SuccessfullyBooted = OutputPin<i960Pinout::ME_NOTES_SUCCESSFUL_I960_BOOT, LOW, HIGH>;
+using EnterTransactionPin = OutputPin<i960Pinout::InCycle, LOW, HIGH>;
 
 template<typename ... pins>
 [[gnu::always_inline]]
@@ -298,7 +299,8 @@ setupPins() noexcept {
             ReadyInputPin,
             InTransactionPin,
             BurstNext,
-            TheI960SuccessfullyBooted
+            TheI960SuccessfullyBooted,
+            EnterTransactionPin
     >();
     // the lock pin is special as it is an open collector pin, we want to stay off of it as much as possible
     LockPin::configure(INPUT);
@@ -308,6 +310,7 @@ setupPins() noexcept {
     BurstNext :: deassertPin();
     FailOutPin :: deassertPin();
     TheI960SuccessfullyBooted :: deassertPin();
+    EnterTransactionPin :: deassertPin();
     // make all outputs deasserted
 }
 template<i960Pinout pin, decltype(HIGH) value>
@@ -507,7 +510,7 @@ void loop() {
         waitOneBusCycle();
         // okay so we need to wait for DEN to go low
         while (Den960::inputDeasserted());
-
+        EnterTransactionPin :: assertPin();
         if (numCycles >= currentConfiguration.getMaxNumberOfCyclesBeforePause()) {
             // provide a pause/cooldown period after a new data request to make sure that the bus has time to "cool".
             // Failure to do so can cause very strange checksum failures / chipset faults to happen with the GCM4
@@ -561,6 +564,7 @@ void loop() {
         // let the i960 know and then wait for the chipset to pull MCU READY high
         informCPUAndWait();
         // to make sure the bus has time to recover we can introduce an i960 bus cycle worth of delay
+        EnterTransactionPin :: deassertPin();
         waitOneBusCycle();
     }
 }
