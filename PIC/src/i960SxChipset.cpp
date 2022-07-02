@@ -161,6 +161,10 @@ configurePIC() noexcept {
     Logic::start();
 }
 // the setup routine runs once when you press reset:
+volatile bool commandComplete = false;
+volatile uint16_t size = 0;
+constexpr auto PacketBufferSize = 1024;
+volatile byte commandPacket[PacketBufferSize] { 0 };
 void setup() {
     BootedPin::configure();
     BootedPin::deassertPin();
@@ -184,12 +188,11 @@ void setup() {
     configurePIC();
     CommunicationChannel.begin(115200);
     // the booted pin is the reset pin conceptually
-    delay(2000);
-    // no need to wait for the chipset to release control
+    for (int i = 0; i < PacketBufferSize; ++i) {
+        commandPacket[i] = 0;
+    }
+    BootedPin :: assertPin();
 }
-volatile bool commandComplete = false;
-volatile uint16_t size = 0;
-volatile byte commandPacket[1024] = { 0 };
 void
 loop() {
     if (commandComplete) {
