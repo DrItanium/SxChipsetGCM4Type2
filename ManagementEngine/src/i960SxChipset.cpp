@@ -144,7 +144,7 @@ enum class i960Pinout : int {
     FAIL = PIN_PD4,
     LOCK_ = PIN_PD5,
     CLK_READY_ = PIN_PD6,
-    ME_PD7 = PIN_PD7,
+    ME_HOLDING_I960_IN_RESET = PIN_PD7,
     //
     BurstLast_ = PIN_PE0,
     InTransaction_ = PIN_PE1,
@@ -271,6 +271,7 @@ using ReadyInputPin = InputPin<i960Pinout::READY_CHIPSET_, LOW, HIGH>;
 using InTransactionPin = OutputPin<i960Pinout::InTransaction_, LOW, HIGH>;
 using BurstNext = OutputPin<i960Pinout::BurstLast_, HIGH, LOW>;
 using ResetPin = OutputPin<i960Pinout::RESET960_, LOW, HIGH>;
+using TheI960InResetPin = OutputPin<i960Pinout::ME_HOLDING_I960_IN_RESET, LOW, HIGH>;
 
 template<typename ... pins>
 [[gnu::always_inline]]
@@ -295,12 +296,10 @@ setupPins() noexcept {
             ReadySyncPin,
             ReadyInputPin,
             InTransactionPin,
-            BurstNext,
-            ResetPin
+            BurstNext
     >();
     // the lock pin is special as it is an open collector pin, we want to stay off of it as much as possible
     LockPin::configure(INPUT);
-    ResetPin ::assertPin();
     DoCyclePin ::deassertPin();
     ReadySyncPin :: deassertPin();
     InTransactionPin :: deassertPin();
@@ -444,6 +443,10 @@ setupCCL() noexcept {
 }
 // the setup routine runs once when you press reset:
 void setup() {
+    ResetPin ::configure();
+    ResetPin ::assertPin();
+    TheI960InResetPin ::configure();
+    TheI960InResetPin :: assertPin();
     configureClockSource();
     delay(2000);
     setupPins();
@@ -452,6 +455,7 @@ void setup() {
     ClockReady::assertPin();
     // now wait for chipset to boot and pic to be booted
     while (ChipsetBootedPin::inputDeasserted() || PICBootedPin :: inputDeasserted());
+    TheI960InResetPin :: deassertPin();
     ResetPin :: deassertPin();
     // no need to wait for the chipset to release control
     while (FailPin::inputLow()) {
