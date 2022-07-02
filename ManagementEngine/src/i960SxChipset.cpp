@@ -132,7 +132,7 @@ enum class i960Pinout : int {
     // PORT C
     PIC_BOOTED_ = PIN_PC0,
     CHIPSET_BOOTED_ = PIN_PC1,
-    ME_PC2 = PIN_PC2,
+    ME_NOTES_SUCCESSFUL_I960_BOOT = PIN_PC2,
     RESET960_ = PIN_PC3,
     UPDI_TXD = PIN_PC4,
     UPDI_RXD = PIN_PC5,
@@ -272,6 +272,7 @@ using InTransactionPin = OutputPin<i960Pinout::InTransaction_, LOW, HIGH>;
 using BurstNext = OutputPin<i960Pinout::BurstLast_, HIGH, LOW>;
 using ResetPin = OutputPin<i960Pinout::RESET960_, LOW, HIGH>;
 using TheI960InResetPin = OutputPin<i960Pinout::ME_HOLDING_I960_IN_RESET, LOW, HIGH>;
+using TheI960SuccessfullyBooted = OutputPin<i960Pinout::ME_NOTES_SUCCESSFUL_I960_BOOT, LOW, HIGH>;
 
 template<typename ... pins>
 [[gnu::always_inline]]
@@ -296,7 +297,8 @@ setupPins() noexcept {
             ReadySyncPin,
             ReadyInputPin,
             InTransactionPin,
-            BurstNext
+            BurstNext,
+            TheI960SuccessfullyBooted
     >();
     // the lock pin is special as it is an open collector pin, we want to stay off of it as much as possible
     LockPin::configure(INPUT);
@@ -305,6 +307,7 @@ setupPins() noexcept {
     InTransactionPin :: deassertPin();
     BurstNext :: deassertPin();
     FailOutPin :: deassertPin();
+    TheI960SuccessfullyBooted :: deassertPin();
     // make all outputs deasserted
 }
 template<i960Pinout pin, decltype(HIGH) value>
@@ -472,6 +475,7 @@ void setup() {
     BootSuccessfulPin::assertPin();
     // at this point, if we ever go from low to high again then we have a checksum failure
     attachInterrupt(digitalPinToInterrupt(static_cast<int>(i960Pinout::FAIL)), handleChecksumFail, RISING);
+    TheI960SuccessfullyBooted :: assertPin();
 }
 template<bool enable = currentConfiguration.enableOneCycleWaitStates()>
 [[gnu::always_inline]]
