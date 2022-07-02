@@ -352,6 +352,7 @@ public:
 [[noreturn]]
 void
 terminateExecution() noexcept {
+    TheI960InResetPin :: assertPin();
     BootSuccessfulPin :: deassertPin();
     while(true) {
         delay(1000);
