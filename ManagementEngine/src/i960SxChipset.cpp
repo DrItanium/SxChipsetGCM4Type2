@@ -267,7 +267,7 @@ using PICBootedPin = InputPin<i960Pinout::PIC_BOOTED_, LOW, HIGH>;
 using ClockReady = OutputPin<i960Pinout::CLK_READY_, LOW, HIGH>;
 using DoCyclePin = OutputPin<i960Pinout::DoCycle_, LOW, HIGH>;
 using ReadySyncPin = OutputPin<i960Pinout::ME_Ready, LOW, HIGH>;
-using ReadyInputPin = OutputPin<i960Pinout::READY_CHIPSET_, LOW, HIGH>;
+using ReadyInputPin = InputPin<i960Pinout::READY_CHIPSET_, LOW, HIGH>;
 using InTransactionPin = OutputPin<i960Pinout::InTransaction_, LOW, HIGH>;
 using BurstNext = OutputPin<i960Pinout::BurstLast_, HIGH, LOW>;
 using ResetPin = OutputPin<i960Pinout::RESET960_, LOW, HIGH>;
@@ -302,7 +302,6 @@ setupPins() noexcept {
     LockPin::configure(INPUT);
     ResetPin ::assertPin();
     DoCyclePin ::deassertPin();
-    ReadyInputPin :: deassertPin();
     ReadySyncPin :: deassertPin();
     InTransactionPin :: deassertPin();
     BurstNext :: deassertPin();
