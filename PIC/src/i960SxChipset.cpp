@@ -234,134 +234,106 @@ inline auto digitalRead() noexcept {
 
 void
 configureClockSource() noexcept {
-    byte clkBits = 0b0000'0011;
+    while ()
     CCP = 0xD8;
-    CLKCTRL.MCLKCTRLA = clkBits;
+    CLKCTRL.MCLKCTRLA |= 0b0000'0011;
+    CCP = 0xD8;
+    CCP = 0xD8;
+    CLKCTRL.OSC20MCTRLA |= 0b0000'0010;
     CCP = 0xD8;
 }
-void configurePIC() noexcept {
-        Event0.set_generator(gen0::pin_pa2);
-        Event0.set_generator(user::ccl0_event_b);
-        Event0.set_generator(user::ccl1_event_b);
-        Event0.set_generator(user::ccl2_event_b);
-        Event0.set_generator(user::ccl3_event_b);
-        Event1.set_generator(gen1::pin_pa7);
-        Event1.set_user(user::ccl0_event_a);
-        Logic0.edgedetect = edgedetect::enable;
-        Logic0.filter = filter::sync;
-        Logic0.input0 = in::event_a;
-        Logic0.input1 = in::input_pullup;
-        Logic0.input2 = in::event_b;
-        Logic0.clocksource = clocksource::in2;
-        Logic0.output = out::enable;
-        Logic1.edgedetect = edgedetect::enable;
-        Logic1.filter = filter::sync;
-        Logic1.input0 = in::input_pullup;
-        Logic1.input1 = in::input_pullup;
-        Logic1.input2 = in::event_b;
-        Logic1.clocksource = clocksource::in2;
-        Logic1.output = out::enable;
-        Logic2.edgedetect = edgedetect::enable;
-        Logic2.filter = filter::sync;
-        Logic2.input0 = in::input_pullup;
-        Logic2.input1 = in::input_pullup;
-        Logic2.input2 = in::event_b;
-        Logic2.output = out::enable;
-        Logic2.clocksource = clocksource::in2;
-        Logic3.edgedetect = edgedetect::enable;
-        Logic3.filter = filter::sync;
-        Logic3.input0 = in::input_pullup;
-        Logic3.input1 = in::input_pullup;
-        Logic3.input2 = in::event_b;
-        Logic3.clocksource = clocksource::in2;
-        Logic3.output = out::enable;
-        // now setup the truth tables
-        // So we should trigger an enable on all falling edges so
-        // 0b00010001 would be the standard setup so
-        // in2, in1, in0
-        // 0b000 -> 1 // we got a trigger of some kind
-        // 0b001 -> 1 // we got a trigger of some kind
-        // 0b010 -> 1 // we got a trigger of some kind
-        // 0b011 -> 0 // we got no trigger at all
-        // 0b100 -> 1 // we got a trigger of some kind
-        // 0b101 -> 1 // we got a trigger of some kind
-        // 0b110 -> 1 // we got a trigger of some kind
-        // 0b111 -> 0 // we got no trigger at all
-        Logic0.truth = 0b01110111;
-        Logic1.truth = 0b01110111;
-        Logic2.truth = 0b01110111;
-        Logic3.truth = 0b01110111;
-        // okay this starts up at the end
-        Logic0.init();
-        Logic1.init();
-        Logic2.init();
-        Logic3.init();
-        Event0.start();
-        Event1.start();
-    }
-    if constexpr (currentConfiguration.debugConsoleActive()) {
-        DebugConsole.println("PIC Configured!");
-    }
+void
+configConfigure10MHzExternalSource() {
+    Event0.set_generator(gen0::pin_pa2);
+    Event0.set_generator(user::ccl0_event_b);
+    Event0.set_generator(user::ccl1_event_b);
+    Event0.set_generator(user::ccl2_event_b);
+    Event0.set_generator(user::ccl3_event_b);
+    Event0.start();
+}
+void
+configChipsetInterruptLine() noexcept {
+    Logic0.enable = true;
+    Logic0.edgedetect = edgedetect::enable;
+    Logic0.filter = filter::sync;
+    Logic0.input0 = in::disable;
+    Logic0.input1 = in::input_pullup;
+    Logic0.input2 = in::event_b;
+    Logic0.clocksource = clocksource::in2;
+    Logic0.output = out::enable;
+    Logic0.sequencer = sequencer::disable;
+    Logic0.truth = 0b0001'0001;
+    Logic0.init();
+}
+void
+configINT0() noexcept {
+    // provide a default configuration of doing nothing!
+    Logic1.enable = true;
+    Logic1.input0 = in::disable;
+    Logic1.input1 = in::disable;
+    Logic1.input2 = in::event_b;
+    Logic1.clocksource = clocksource::in2;
+    Logic1.output = out::enable;
+    Logic1.sequencer = sequencer::disable;
+    Logic1.edgedetect = edgedetect::enable;
+    Logic1.filter = filter::sync;
+    Logic1.truth = 0b0001'0001;
+    Logic1.init();
+}
+
+void
+configINT1() noexcept {
+    // provide a default configuration of doing nothing!
+    Logic2.enable = true;
+    Logic2.input0 = in::disable;
+    Logic2.input1 = in::disable;
+    Logic2.input2 = in::event_b;
+    Logic2.clocksource = clocksource::in2;
+    Logic2.output = out::enable;
+    Logic2.sequencer = sequencer::disable;
+    Logic2.edgedetect = edgedetect::enable;
+    Logic2.filter = filter::sync;
+    Logic2.truth = 0b0001'0001;
+    Logic2.init();
+}
+
+void
+configINT2() noexcept {
+    // provide a default configuration of doing nothing!
+    Logic3.enable = true;
+    Logic3.input0 = in::disable;
+    Logic3.input1 = in::disable;
+    Logic3.input2 = in::event_b;
+    Logic3.clocksource = clocksource::in2;
+    Logic3.output = out::enable;
+    Logic3.sequencer = sequencer::disable;
+    Logic3.edgedetect = edgedetect::enable;
+    Logic3.filter = filter::sync;
+    Logic3.truth = 0b0001'0001;
+    Logic3.init();
+}
+
+void
+configurePIC() noexcept {
+    // we can set this all up ahead of time
+    configConfigure10MHzExternalSource();
+    configChipsetInterruptLine();
+    configINT0();
+    configINT1();
+    configINT2();
+    Logic::start();
 }
 // the setup routine runs once when you press reset:
 void setup() {
     configureClockSource();
+    configurePIC();
     // the booted pin is the reset pin conceptually
     BootedPin ::configure();
     BootedPin ::assertPin();
     delay(2000);
-    if constexpr (currentConfiguration.debugConsoleActive()) {
-        DebugConsole.swap(1);
-        DebugConsole.begin(9600);
-        if constexpr (currentConfiguration.waitForSerialConnect()) {
-            while (!DebugConsole) {
-                delay(1);
-            }
-        }
-        DebugConsole.println("i960 Management Engine");
-    }
     setupPins();
-    if constexpr (currentConfiguration.hasPICBuiltin()) {
-        configurePIC();
-    }
-    if constexpr (currentConfiguration.enableReadyPulseMode()) {
-        while (true) {
-            ReadySyncPin::pulse();
-        }
-    }
-    if constexpr (currentConfiguration.enableTestReadyPinMode()) {
-        while (true) {
-            DebugConsole.print("Ready Input Pin Value: ");
-            DebugConsole.println(ReadyInputPin::read());
-        }
-    }
     // no need to wait for the chipset to release control
     BootedPin::deassertPin();
-    while (FailPin::inputLow()) {
-        if (DenPin::inputAsserted()) {
-            if constexpr (currentConfiguration.debugConsoleActive()) {
-                DebugConsole.println("DEN Already Asserted!");
-            }
-            break;
-        }
-    }
-    while (FailPin::inputHigh()) {
-        if (DenPin::inputAsserted()) {
-            if constexpr (currentConfiguration.debugConsoleActive()) {
-                DebugConsole.println("DEN Already Asserted!");
-            }
-            break;
-        }
-    }
-    if constexpr (currentConfiguration.debugConsoleActive()) {
-        DebugConsole.println("Boot successful signalling!");
-    }
-    BootSuccessfulPin::assertPin();
-    // at this point, if we ever go from low to high again then we have a checksum failure
-    attachInterrupt(digitalPinToInterrupt(static_cast<int>(i960Pinout::FAIL)), handleChecksumFail, RISING);
-    if constexpr (currentConfiguration.debugConsoleActive()) {
-        DebugConsole.println("Interrupt attached!");
-    }
 }
 
 
