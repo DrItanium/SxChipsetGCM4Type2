@@ -298,6 +298,7 @@ signalHaltState(const std::string& haltMsg) noexcept {
 
 void
 setupMemoryMap() {
+    Serial.println(F("Setting up memory map"));
     static constexpr uint32_t mmioBaseAddress = 0xFF00'0000;
     static constexpr uint32_t chipsetDevicesStart = mmioBaseAddress + 0xF0'0000;
     static constexpr uint32_t ramStart = 0x0000'0000;
@@ -333,6 +334,7 @@ setupMemoryMap() {
     fullSpace.emplace_back(serial);
     fullSpace.emplace_back(sdcardInterface);
     /// @todo add more items to full space here
+    Serial.println(F("Done setting up memory map!"));
 }
 MemorySpace&
 getMemory() noexcept {
