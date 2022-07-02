@@ -265,7 +265,9 @@ void setup() {
     Serial.println(F("i960Sx chipset brought up fully!"));
     ManagementEngine::chipsetReady();
     ProcessorInterface::setupDataLinesForRead();
+    Serial.println(F("Waiting for boot signal"));
     ManagementEngine::waitForBootSignal();
+    Serial.println(F("System Booted!"));
 }
 
 void loop() {
