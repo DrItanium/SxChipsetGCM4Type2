@@ -48,9 +48,12 @@ enum class PICPinout : int {
     // Miscellaneous controls
     BUF_ENABLE = PIN_PF4,
     PIC_BOOTED = PIN_PF5,
+    WAITING_FOR_CLOCK = PIN_PE0,
+    PIC_SUCCESSFULLY_STARTED_UP = PIN_PE1,
 
 };
-
+using SuccessfulStartup = ActiveLowOutputPin<PICPinout::PIC_SUCCESSFULLY_STARTED_UP>;
+using WaitingForClock = ActiveHighOutputPin<PICPinout::WAITING_FOR_CLOCK>;
 using ClockReadyPin = ActiveLowInputPin<PICPinout::CLK_READY>;
 using ClkPin = ActiveLowInputPin<PICPinout::CLK>;
 using Clk2Pin = ActiveLowInputPin<PICPinout::CLK2>;
@@ -166,14 +169,19 @@ volatile uint16_t size = 0;
 constexpr auto PacketBufferSize = 1024;
 volatile byte commandPacket[PacketBufferSize] { 0 };
 void setup() {
+
     BootedPin::configure();
     BootedPin::deassertPin();
     ClockReadyPin::configure();
-
+    WaitingForClock :: configure();
+    SuccessfulStartup :: configure();
+    SuccessfulStartup :: deassertPin();
+    WaitingForClock :: assertPin();
     delay(1000);
     while (ClockReadyPin::inputDeasserted()) {
         delay(10);
     }
+    WaitingForClock :: deassertPin();
     configureClockSource();
     configurePins<BufferEnablePin,
             Int0Output,
@@ -192,6 +200,7 @@ void setup() {
         commandPacket[i] = 0;
     }
     BootedPin :: assertPin();
+    SuccessfulStartup :: assertPin();
 }
 void
 loop() {
