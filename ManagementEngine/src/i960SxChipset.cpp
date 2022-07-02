@@ -388,10 +388,10 @@ setup10MHz_CCL() noexcept {
     Logic0.enable = true;
     Logic0.input0 = in::feedback; // route the result of the flipflop back to CCL0 to generate the divider effect
     Logic0.input1 = in::disable;
-    Logic0.input2 = in::disable;
+    Logic0.input2 = in::event_a;
     Logic0.output = out::enable; // output the 10MHz clock from here
     Logic0.truth = 0b01010101;
-    Logic0.sequencer = sequencer::d_flip_flop;
+    Logic0.sequencer = sequencer::jk_flip_flop;
 
     Logic1.enable = true;
     Logic1.input0 = in::event_a;
@@ -435,6 +435,7 @@ setupCCL() noexcept {
     setup10MHz_CCL();
     setupFailSignalDetector_CCL();
     setupReadySignal_CCL();
+    Logic::start();
 }
 // the setup routine runs once when you press reset:
 void setup() {
