@@ -301,6 +301,12 @@ setupPins() noexcept {
     // the lock pin is special as it is an open collector pin, we want to stay off of it as much as possible
     LockPin::configure(INPUT);
     ResetPin ::assertPin();
+    DoCyclePin ::deassertPin();
+    ReadyInputPin :: deassertPin();
+    ReadySyncPin :: deassertPin();
+    InTransactionPin :: deassertPin();
+    BurstNext :: deassertPin();
+    FailOutPin :: deassertPin();
     // make all outputs deasserted
 }
 template<i960Pinout pin, decltype(HIGH) value>
