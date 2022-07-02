@@ -188,15 +188,12 @@ void setup() {
     // no need to wait for the chipset to release control
 }
 volatile bool commandComplete = false;
-volatile byte opcode = 0;
+volatile uint16_t size = 0;
+volatile byte commandPacket[1024] = { 0 };
 void
 loop() {
     if (commandComplete) {
-        switch (opcode)  {
-            default:
-                break;
-        }
-        opcode = 0;
+        size = 0;
         commandComplete = false;
     }
 }
@@ -204,4 +201,5 @@ loop() {
 void
 serialEvent() {
     // absorb the communication data from the chipset communication channel
+    /// @todo implement logic for this
 }
