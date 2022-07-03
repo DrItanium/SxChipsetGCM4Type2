@@ -276,6 +276,7 @@ inline void informCPUAndWait() noexcept {
 [[gnu::always_inline]]
 inline void waitForCycleEnd() noexcept {
     ReadyInputPin :: waitUntilPinIsAsserted();
+    BurstNext :: deassertPin();
     DoCyclePin ::deassertPin();
     waitOneBusCycle();
 }
