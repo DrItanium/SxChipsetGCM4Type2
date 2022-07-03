@@ -75,7 +75,7 @@ struct DigitalPin {
     static void deassertPin() noexcept { write(deasserted); }
     static void pulse() noexcept {
         assertPin();
-        __builtin_avr_nops(2);
+        __builtin_avr_nops(4);
         deassertPin();
     }
     static void waitUntilPinIsAsserted() noexcept {

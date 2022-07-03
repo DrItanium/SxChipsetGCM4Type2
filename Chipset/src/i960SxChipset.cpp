@@ -212,7 +212,7 @@ void setupMux() noexcept {
     DigitalPin<i960Pinout::MUXSel0>::configure(); DigitalPin<i960Pinout::MUXSel0>::deassertPin();
     DigitalPin<i960Pinout::MUXSel1>::configure(); DigitalPin<i960Pinout::MUXSel1>::deassertPin();
     DigitalPin<i960Pinout::MUXSel2>::configure(); DigitalPin<i960Pinout::MUXSel2>::deassertPin();
-    DigitalPin<i960Pinout::MUX_EN>::configure(); DigitalPin<i960Pinout::MUX_EN>::deassertPin();
+    DigitalPin<i960Pinout::MUX_EN>::configure(); DigitalPin<i960Pinout::MUX_EN>::assertPin();
 }
 void setup() {
     ManagementEngine::configure();
