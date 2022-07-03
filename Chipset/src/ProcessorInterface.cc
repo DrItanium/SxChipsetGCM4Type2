@@ -96,17 +96,30 @@ ProcessorInterface::setDataBits(uint16_t value) noexcept {
 };
 void
 ProcessorInterface::begin() noexcept {
+    // make sure that the mux input lines are setup to always be sampling at the cost of increased power consumption
+    // even though the SAMD enables continual sampling in blocks of 8, make sure that we denote all of them are active at the same time!
+    DigitalPin<i960Pinout::MUXADR0>::enableContinuousSampling();
+    DigitalPin<i960Pinout::MUXADR1>::enableContinuousSampling();
+    DigitalPin<i960Pinout::MUXADR2>::enableContinuousSampling();
+    DigitalPin<i960Pinout::MUXADR3>::enableContinuousSampling();
+    DigitalPin<i960Pinout::MUXADR4>::enableContinuousSampling();
+    DigitalPin<i960Pinout::MUXADR5>::enableContinuousSampling();
+    DigitalPin<i960Pinout::MUXADR6>::enableContinuousSampling();
+    DigitalPin<i960Pinout::MUXADR7>::enableContinuousSampling();
 }
-template<uint8_t pattern>
+void
+setMuxChannel(uint8_t pattern) noexcept {
+    MuxLines config (DigitalPin<i960Pinout::MUXSel0>::readOutPort());
+    config.muxIndex = pattern;
+    DigitalPin<i960Pinout::MUXSel0>::writeOutPort(config.value);
+    // introduce a forced delay to make sure we switch at the appropriate speed, otherwise we read way too quickly after the update
+    asm volatile ("nop");
+}
 uint8_t
-readMuxPort() noexcept {
-    Serial.print(F("PATTERN: 0b"));
-    Serial.println(pattern & 0b111, BIN);
-    digitalWrite<i960Pinout::MUXSel0, pattern & 0b001 ? HIGH : LOW>();
-    digitalWrite<i960Pinout::MUXSel1, pattern & 0b010 ? HIGH : LOW>();
-    digitalWrite<i960Pinout::MUXSel2, pattern & 0b100 ? HIGH : LOW>();
-    volatile auto result = DigitalPin<i960Pinout::MUXADR0>::readInPort();
-    return static_cast<uint8_t>(result >> 16);
+readMuxPort(uint8_t pattern) noexcept {
+    setMuxChannel(pattern);
+    MuxLines result(DigitalPin<i960Pinout::MUXSel0>::readInPort());
+    return result.data;
 }
 namespace {
     void
@@ -119,27 +132,21 @@ namespace {
 }
 void
 ProcessorInterface::newAddress() noexcept {
-    //displayPortContents();
-    // update the address here
-    auto lowest = readMuxPort<0>();
-    //Serial.print(F("ind 0: 0x")); Serial.println(lowest, HEX); displayPortContents();
+    auto lowest = readMuxPort(0);
+    Serial.print(F("ind 0: 0b")); Serial.println(lowest, BIN);
     isWriteOperation_ = lowest & 0b1;
     lowest &= 0b1111'1110; // clear the W/R bit out
-    auto lower = readMuxPort<1>();
-    //Serial.print(F("ind 1: 0x")); Serial.println(lower, HEX); displayPortContents();
-    auto higher = readMuxPort<2>();
-    //Serial.print(F("ind 2: 0x")); Serial.println(higher, HEX); displayPortContents();
-    auto highest = readMuxPort<3>();
-    //Serial.print(F("ind 3: 0x")); Serial.println(highest, HEX); displayPortContents();
+    auto lower = readMuxPort(1);
+    Serial.print(F("ind 1: 0b")); Serial.println(lower, BIN);
+    auto higher = readMuxPort(2);
+    Serial.print(F("ind 2: 0b")); Serial.println(higher, BIN);
+    auto highest = readMuxPort(3);
+    Serial.print(F("ind 3: 0b")); Serial.println(highest, BIN);
     address_ = SplitWord32{lowest, lower, higher, highest};
-    //Serial.print(F("ind 4: 0x")); Serial.println(readMuxPort<4>(), HEX); displayPortContents();
-    //Serial.print(F("ind 5: 0x")); Serial.println(readMuxPort<5>(), HEX); displayPortContents();
-    // Serial.print(F("ind 6: 0x")); Serial.println(readMuxPort<6>(), HEX); displayPortContents();
-    // Serial.print(F("ind 7: 0x")); Serial.println(readMuxPort<7>(), HEX); displayPortContents();
     Serial.print(F("ADDRESS: 0x"));
     Serial.println(address_.getWholeValue(), HEX);
 }
 LoadStoreStyle
 ProcessorInterface::getStyle() noexcept {
-    return static_cast<LoadStoreStyle>((readMuxPort<4>() >> 4) & 0b11);
+    return static_cast<LoadStoreStyle>((readMuxPort(4) >> 4) & 0b11);
 }

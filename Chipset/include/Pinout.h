@@ -319,6 +319,7 @@ struct DigitalPin2 {
                 targetPort_ = &getPortGroup<getPin()>();
                 targetPin_ = &getPinDescription<getPin()>();
                 readMask_ = 1ul << targetPin_->ulPin;
+                continuousSamplingActive_ = (getPortGroup<getPin()>().CTRL.bit.SAMPLING & readMask_);
             }
         }
         //return (getPortGroup<pin>().IN.reg & (bitMasks[getPinDescription<pin>().ulPin])) != 0 ? HIGH : LOW;
@@ -488,103 +489,28 @@ struct DigitalPin2 {
             pinMode(getPin(), INPUT);
         }
     }
+    static inline void enableContinuousSampling() noexcept {
+        if (!continuousSamplingActive_) {
+            targetPort_->CTRL.bit.SAMPLING |= readMask_;
+            continuousSamplingActive_ = true;
+        }
+    }
+    static inline void disableContinousSampling() noexcept {
+        if (continuousSamplingActive_) {
+            targetPort_->CTRL.bit.SAMPLING &= ~readMask_;
+            continuousSamplingActive_ = false;
+        }
+    }
 private:
-    static inline PortGroup* targetPort_ = nullptr;
+    static inline volatile PortGroup* volatile targetPort_ = nullptr;
     static inline const PinDescription* targetPin_ = nullptr;
     static inline uint32_t readMask_ = 0xFFFF'FFFF;
     static inline bool configured_ = false;
     static inline bool directionIsOutput_ = false;
+    static inline bool continuousSamplingActive_ = false;
 };
-#if 0
-template<i960Pinout pin>
-struct DigitalPin {
-    DigitalPin() = delete;
-    ~DigitalPin() = delete;
-    DigitalPin(const DigitalPin&) = delete;
-    DigitalPin(DigitalPin&&) = delete;
-    DigitalPin& operator=(const DigitalPin&) = delete;
-    DigitalPin& operator=(DigitalPin&&) = delete;
-
-    static constexpr bool isInputPin() noexcept { return false; }
-    static constexpr bool isOutputPin() noexcept { return false; }
-    static constexpr bool isInputPullup() noexcept { return false; }
-    static constexpr auto getDirection() noexcept { return false; }
-    static constexpr auto getPin() noexcept { return pin; }
-    static constexpr auto valid() noexcept { return isValidPin960_v<pin>; }
-};
-#define DefOutputPin(pin, asserted, deasserted) \
-    template<> \
-    struct DigitalPin< pin > { \
-    static_assert(asserted != deasserted, "Asserted and deasserted must not be equal!"); \
-        DigitalPin() = delete; \
-        ~DigitalPin() = delete; \
-        DigitalPin(const DigitalPin&) = delete; \
-        DigitalPin(DigitalPin&&) = delete; \
-        DigitalPin& operator=(const DigitalPin&) = delete; \
-        DigitalPin& operator=(DigitalPin&&) = delete; \
-        static constexpr auto isInputPin() noexcept { return false; } \
-        static constexpr auto isOutputPin() noexcept { return true; } \
-        static constexpr auto getPin() noexcept { return pin; } \
-        static constexpr auto getDirection() noexcept { return OUTPUT; } \
-        static constexpr auto getAssertionState() noexcept { return asserted; } \
-        static constexpr auto getDeassertionState() noexcept { return deasserted; }      \
-        [[gnu::always_inline]] inline static void assertPin() noexcept { digitalWrite<pin,getAssertionState()>(); } \
-        [[gnu::always_inline]] inline static void deassertPin() noexcept { digitalWrite<pin,getDeassertionState()>(); } \
-        [[gnu::always_inline]] inline static void write(decltype(LOW) value) noexcept { digitalWrite<pin>(value); } \
-        static constexpr auto valid() noexcept { return isValidPin960_v<pin>; }          \
-        template<decltype(LOW) switchTo = LOW>  \
-        [[gnu::always_inline]] inline static void pulse() noexcept { ::pulse<pin, switchTo>(); }  \
-        [[gnu::always_inline]] static void configure() noexcept { pinMode(pin, OUTPUT); } \
-    }
-#define DefInputPin(pin, asserted, deasserted) \
-    template<> \
-    struct DigitalPin< pin > { \
-        static_assert(asserted != deasserted, "Asserted and deasserted must not be equal!"); \
-        DigitalPin() = delete; \
-        ~DigitalPin() = delete; \
-        DigitalPin(const DigitalPin&) = delete; \
-        DigitalPin(DigitalPin&&) = delete; \
-        DigitalPin& operator=(const DigitalPin&) = delete; \
-        DigitalPin& operator=(DigitalPin&&) = delete; \
-        static constexpr auto isInputPin() noexcept { return true; } \
-        static constexpr auto isOutputPin() noexcept { return false; } \
-        static constexpr auto getPin() noexcept { return pin; } \
-        static constexpr auto getDirection() noexcept { return INPUT; } \
-        static constexpr auto getAssertionState() noexcept { return asserted; } \
-        static constexpr auto getDeassertionState() noexcept { return deasserted; } \
-        [[gnu::always_inline]] inline static auto read() noexcept { return digitalRead<pin>(); } \
-        [[gnu::always_inline]] inline static bool isAsserted() noexcept { return read() == getAssertionState(); } \
-        [[gnu::always_inline]] inline static bool isDeasserted() noexcept { return read() == getDeassertionState(); } \
-        static constexpr auto valid() noexcept { return isValidPin960_v<pin>; }              \
-        [[gnu::always_inline]] static void configure() noexcept { pinMode(pin, INPUT); } \
-    }
-#define DefSPICSPin(pin) DefOutputPin(pin, LOW, HIGH)
-
-DefSPICSPin(i960Pinout::GPIOSelect);
-DefSPICSPin(i960Pinout::SD_EN);
-
-DefOutputPin(i960Pinout::Reset960, LOW, HIGH);
-DefOutputPin(i960Pinout::Ready, LOW, HIGH);
-DefOutputPin(i960Pinout::Reset4809, LOW, HIGH);
-DefInputPin(i960Pinout::SuccessfulBoot, HIGH, LOW);
-DefInputPin(i960Pinout::W_R_, LOW, HIGH);
-DefInputPin(i960Pinout::BE0, LOW, HIGH);
-DefInputPin(i960Pinout::BE1, LOW, HIGH);
-DefInputPin(i960Pinout::INT_EN0, LOW, HIGH);
-DefInputPin(i960Pinout::INT_EN1, LOW, HIGH);
-DefInputPin(i960Pinout::INT_EN2, LOW, HIGH);
-DefInputPin(i960Pinout::INT_EN3, LOW, HIGH);
-DefInputPin(i960Pinout::DoCycle, LOW, HIGH);
-DefInputPin(i960Pinout::BurstNext, LOW, HIGH);
-DefInputPin(i960Pinout::StartTransaction, LOW, HIGH);
-DefInputPin(i960Pinout::EndTransaction, LOW, HIGH);
-#undef DefSPICSPin
-#undef DefInputPin
-#undef DefOutputPin
-#else
 template<i960Pinout pin>
 using DigitalPin = DigitalPin2<pin>;
-#endif
 
 template<i960Pinout pinId>
 class PinAsserter {
