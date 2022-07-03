@@ -120,6 +120,8 @@ ProcessorInterface::newAddress() noexcept {
     auto higher = readMuxPort<2>();
     auto highest = readMuxPort<3>();
     address_ = SplitWord32{lowest, lower, higher, highest};
+    Serial.print(F("ADDRESS: 0x"));
+    Serial.println(address_.getWholeValue(), HEX);
 }
 LoadStoreStyle
 ProcessorInterface::getStyle() noexcept {
