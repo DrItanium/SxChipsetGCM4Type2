@@ -30,4 +30,91 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #define MANAGEMENTENGINE_PINOUT_H
 #include <Arduino.h>
 
+enum class PinStyle {
+    Input,
+    Output,
+    InputPullup,
+    Any,
+};
+
+template<PinStyle style>
+constexpr decltype(OUTPUT) PinDirection_v = INPUT; // default to input
+template<> constexpr auto PinDirection_v<PinStyle::Input> = INPUT;
+template<> constexpr auto PinDirection_v<PinStyle::InputPullup> = INPUT_PULLUP;
+template<> constexpr auto PinDirection_v<PinStyle::Output> = OUTPUT;
+
+template<auto pin, PinStyle style, decltype(HIGH) asserted, decltype(HIGH) deasserted>
+struct DigitalPin {
+    static_assert(asserted != deasserted, "asserted cannot be equal to deasserted");
+    DigitalPin() = delete;
+    ~DigitalPin() = delete;
+    DigitalPin(const DigitalPin&) = delete;
+    DigitalPin(DigitalPin&&) = delete;
+    DigitalPin& operator=(const DigitalPin&) = delete;
+    DigitalPin& operator=(DigitalPin&&) = delete;
+    static constexpr bool isBidirectionalPin() noexcept { return style == PinStyle::Any; }
+    static constexpr bool isInputPin() noexcept { return style == PinStyle::Input || isBidirectionalPin(); }
+    static constexpr bool isOutputPin() noexcept { return style == PinStyle::Output || isBidirectionalPin(); }
+    static constexpr bool isInputPullupPin() noexcept { return style == PinStyle::InputPullup || isBidirectionalPin(); }
+    static constexpr auto getDirection() noexcept { return PinDirection_v<style>; }
+    static constexpr auto getPin() noexcept { return pin; }
+    static void configure(decltype(OUTPUT) pinDirection = getDirection()) noexcept {
+        ::pinMode(static_cast<int>(getPin()), pinDirection);
+    }
+    static auto read() noexcept {
+        return digitalReadFast(static_cast<int>(pin));
+    }
+    static bool inputAsserted() noexcept { return read() == asserted; }
+    static bool inputDeasserted() noexcept { return read() == deasserted; }
+    static bool inputLow() noexcept { return read() == LOW; }
+    static bool inputHigh() noexcept { return read() == HIGH; }
+    static void write(decltype(HIGH) value) noexcept {
+        digitalWriteFast(static_cast<int>(pin), value);
+    }
+    static void assertPin() noexcept { write(asserted); }
+    static void deassertPin() noexcept { write(deasserted); }
+    static void pulse() noexcept {
+        assertPin();
+        __builtin_avr_nops(2);
+        deassertPin();
+    }
+};
+template<auto pin, decltype(HIGH) asserted, decltype(HIGH) deasserted>
+using OutputPin = DigitalPin<pin, PinStyle::Output, asserted, deasserted>;
+
+template<auto pin, decltype(HIGH) asserted, decltype(HIGH) deasserted>
+using InputPin = DigitalPin<pin, PinStyle::Input, asserted, deasserted>;
+template<auto pin, decltype(HIGH) asserted, decltype(HIGH) deasserted>
+using InputPullupPin = DigitalPin<pin, PinStyle::InputPullup, asserted, deasserted>;
+
+template<auto pin, decltype(HIGH) asserted, decltype(HIGH) deasserted>
+using BidirectionalPin = DigitalPin<pin, PinStyle::Any, asserted, deasserted>;
+
+template<typename T>
+[[gnu::always_inline]]
+inline void digitalWrite(T ip, decltype(HIGH) value) {
+    digitalWriteFast(static_cast<int>(ip), value);
+}
+
+template<typename T>
+[[gnu::always_inline]]
+inline void pinMode(T ip, decltype(INPUT) value) {
+    pinMode(static_cast<int>(ip), value);
+}
+template<typename T>
+[[gnu::always_inline]]
+inline auto digitalRead(T ip) {
+    return digitalRead<T>(ip);
+}
+
+template<typename ... pins>
+[[gnu::always_inline]]
+inline void configurePins() noexcept {
+    (pins::configure(), ...);
+}
+template<typename ... pins>
+[[gnu::always_inline]]
+inline void deassertPins() noexcept {
+    (pins::deassertPin(), ...);
+}
 #endif //MANAGEMENTENGINE_PINOUT_H
