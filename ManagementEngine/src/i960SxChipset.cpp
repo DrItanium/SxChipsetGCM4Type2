@@ -306,17 +306,17 @@ void loop() {
             // tell the chipset we are starting a transaction
             InTransactionPin :: assertPin();
             // okay now we need to emulate a wait loop to allow the chipset time to do its thing
-           for (/*byte numBurstCycles = 0;;++numBurstCycles*/ ;;) {
-#if 0
-               if (numBurstCycles >= 8) {
-                   // too many cycles for a given transaction have occurred
-                   tooManyCyclesForTransaction();
-               }
-#endif
+           for (;;) {
                // instead of pulsing do cycle, we just assert it while we wait
                // this has the added benefit of providing proper synchronization between two different clock domains
                // for example, the GCM4 runs at 120MHz while this chip runs at 20MHz. Making the chipset wait provides implicit
                // synchronization
+               if (BlastPin::inputAsserted()) {
+                   BurstNext ::deassertPin();
+               } else {
+                   BurstNext ::assertPin();
+               }
+               // now do the cycle itself
                DoCyclePin :: assertPin();
                // we have entered a new transaction so increment the counter
                // we want to count the number of transaction cycles
@@ -329,11 +329,7 @@ void loop() {
                // we are dealing with a burst transaction at this point
                waitForCycleEnd();
                // let the chipset know that the operation will continue
-               {
-                   BurstNext::assertPin();
-                   informCPUAndWait();
-                   BurstNext::deassertPin();
-               }
+               informCPUAndWait();
            }
            // the end of the current transaction needs to be straighline code
            waitForCycleEnd();
