@@ -319,7 +319,6 @@ struct DigitalPin2 {
                 targetPort_ = &getPortGroup<getPin()>();
                 targetPin_ = &getPinDescription<getPin()>();
                 readMask_ = 1ul << targetPin_->ulPin;
-                continuousSamplingActive_ = (getPortGroup<getPin()>().CTRL.bit.SAMPLING & readMask_);
             }
         }
         //return (getPortGroup<pin>().IN.reg & (bitMasks[getPinDescription<pin>().ulPin])) != 0 ? HIGH : LOW;
@@ -489,25 +488,12 @@ struct DigitalPin2 {
             pinMode(getPin(), INPUT);
         }
     }
-    static inline void enableContinuousSampling() noexcept {
-        if (!continuousSamplingActive_) {
-            targetPort_->CTRL.bit.SAMPLING |= readMask_;
-            continuousSamplingActive_ = true;
-        }
-    }
-    static inline void disableContinousSampling() noexcept {
-        if (continuousSamplingActive_) {
-            targetPort_->CTRL.bit.SAMPLING &= ~readMask_;
-            continuousSamplingActive_ = false;
-        }
-    }
 private:
     static inline volatile PortGroup* volatile targetPort_ = nullptr;
     static inline const PinDescription* targetPin_ = nullptr;
     static inline uint32_t readMask_ = 0xFFFF'FFFF;
     static inline bool configured_ = false;
     static inline bool directionIsOutput_ = false;
-    static inline bool continuousSamplingActive_ = false;
 };
 template<i960Pinout pin>
 using DigitalPin = DigitalPin2<pin>;

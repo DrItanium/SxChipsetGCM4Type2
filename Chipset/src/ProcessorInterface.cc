@@ -96,23 +96,14 @@ ProcessorInterface::setDataBits(uint16_t value) noexcept {
 };
 void
 ProcessorInterface::begin() noexcept {
-    // make sure that the mux input lines are setup to always be sampling at the cost of increased power consumption
-    // even though the SAMD enables continual sampling in blocks of 8, make sure that we denote all of them are active at the same time!
-    DigitalPin<i960Pinout::MUXADR0>::enableContinuousSampling();
-    DigitalPin<i960Pinout::MUXADR1>::enableContinuousSampling();
-    DigitalPin<i960Pinout::MUXADR2>::enableContinuousSampling();
-    DigitalPin<i960Pinout::MUXADR3>::enableContinuousSampling();
-    DigitalPin<i960Pinout::MUXADR4>::enableContinuousSampling();
-    DigitalPin<i960Pinout::MUXADR5>::enableContinuousSampling();
-    DigitalPin<i960Pinout::MUXADR6>::enableContinuousSampling();
-    DigitalPin<i960Pinout::MUXADR7>::enableContinuousSampling();
 }
 void
 setMuxChannel(uint8_t pattern) noexcept {
+    /// @todo use the OUTSET register to improve performance
     MuxLines config (DigitalPin<i960Pinout::MUXSel0>::readOutPort());
     config.muxIndex = pattern;
     DigitalPin<i960Pinout::MUXSel0>::writeOutPort(config.value);
-    // introduce a forced delay to make sure we switch at the appropriate speed, otherwise we read way too quickly after the update
+    // introduce a forced delay of a few cycles to make sure we switch at the appropriate speed, otherwise we read way too quickly after the update
     asm volatile ("nop");
 }
 uint8_t
@@ -120,15 +111,6 @@ readMuxPort(uint8_t pattern) noexcept {
     setMuxChannel(pattern);
     MuxLines result(DigitalPin<i960Pinout::MUXSel0>::readInPort());
     return result.data;
-}
-namespace {
-    void
-    displayPortContents() noexcept {
-        Serial.print(F("\tIN: 0x"));
-        Serial.print(DigitalPin<i960Pinout::MUXSel0>::readInPort(), HEX);
-        Serial.print(F(", OUT: 0x"));
-        Serial.println(DigitalPin<i960Pinout::MUXSel0>::readOutPort(), HEX);
-    }
 }
 void
 ProcessorInterface::newAddress() noexcept {
