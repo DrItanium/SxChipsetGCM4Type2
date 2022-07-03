@@ -78,17 +78,14 @@ struct DigitalPin {
         __builtin_avr_nops(2);
         deassertPin();
     }
+    static void waitUntilPinIsAsserted() noexcept {
+        /// @todo should this only be allowed on input pins?
+        while (inputDeasserted());
+    }
+    static void waitUntilPinIsDeasserted() noexcept {
+        while (inputAsserted());
+    }
 };
-template<auto pin, decltype(HIGH) asserted, decltype(HIGH) deasserted>
-using OutputPin = DigitalPin<pin, PinStyle::Output, asserted, deasserted>;
-
-template<auto pin, decltype(HIGH) asserted, decltype(HIGH) deasserted>
-using InputPin = DigitalPin<pin, PinStyle::Input, asserted, deasserted>;
-template<auto pin, decltype(HIGH) asserted, decltype(HIGH) deasserted>
-using InputPullupPin = DigitalPin<pin, PinStyle::InputPullup, asserted, deasserted>;
-
-template<auto pin, decltype(HIGH) asserted, decltype(HIGH) deasserted>
-using BidirectionalPin = DigitalPin<pin, PinStyle::Any, asserted, deasserted>;
 
 template<typename T>
 [[gnu::always_inline]]
@@ -158,4 +155,19 @@ public:
     PinAsserter() { T::assertPin(); }
     ~PinAsserter() { T::deassertPin(); }
 };
+
+template<auto pin, decltype(HIGH) asserted, decltype(HIGH) deasserted>
+using OutputPin = DigitalPin<pin, PinStyle::Output, asserted, deasserted>;
+
+template<auto pin, decltype(HIGH) asserted, decltype(HIGH) deasserted>
+using InputPin = DigitalPin<pin, PinStyle::Input, asserted, deasserted>;
+template<auto pin, decltype(HIGH) asserted, decltype(HIGH) deasserted>
+using InputPullupPin = DigitalPin<pin, PinStyle::InputPullup, asserted, deasserted>;
+
+template<auto pin> using ActiveHighOutputPin = OutputPin<pin, HIGH, LOW>;
+template<auto pin> using ActiveLowOutputPin = OutputPin<pin, LOW, HIGH>;
+template<auto pin> using ActiveHighInputPin = InputPin<pin, HIGH, LOW>;
+template<auto pin> using ActiveLowInputPin = InputPin<pin, LOW, HIGH>;
+template<auto pin> using ActiveHighInputPullupPin = InputPullupPin<pin, HIGH, LOW>;
+template<auto pin> using ActiveLowInputPullupPin = InputPullupPin<pin, LOW, HIGH>;
 #endif //MANAGEMENTENGINE_PINOUT_H

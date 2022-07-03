@@ -234,7 +234,8 @@ void setup() {
     // at this point all of the clock sources are ready
     ClockReady::assertPin();
     // now wait for chipset to boot and pic to be booted
-    while (ChipsetBootedPin::inputDeasserted() || PICBootedPin :: inputDeasserted());
+    ChipsetBootedPin :: waitUntilPinIsAsserted();
+    PICBootedPin :: waitUntilPinIsAsserted();
     TheI960InResetPin :: deassertPin();
     ResetPin :: deassertPin();
     // no need to wait for the chipset to release control
@@ -263,13 +264,13 @@ inline void waitOneBusCycle() noexcept {
 [[gnu::always_inline]]
 inline void informCPUAndWait() noexcept {
     ReadySyncPin :: pulse();
-    while (ReadyInputPin::inputAsserted());
+    ReadyInputPin :: waitUntilPinIsDeasserted();
     waitOneBusCycle();
 }
 
 [[gnu::always_inline]]
 inline void waitForCycleEnd() noexcept {
-    while (ReadyInputPin::inputDeasserted());
+    ReadyInputPin :: waitUntilPinIsAsserted();
     DoCyclePin ::deassertPin();
     waitOneBusCycle();
 }
@@ -281,7 +282,7 @@ void loop() {
         waitOneBusCycle();
         WaitingForTransactionPin::assertPin();
         // okay so we need to wait for DEN to go low
-        while (Den960::inputDeasserted());
+        Den960 :: waitUntilPinIsAsserted();
         EnterTransactionPin :: assertPin();
         WaitingForTransactionPin::deassertPin();
         if (numCycles >= currentConfiguration.getMaxNumberOfCyclesBeforePause()) {
