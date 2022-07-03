@@ -100,12 +100,13 @@ ProcessorInterface::begin() noexcept {
 template<uint8_t pattern>
 uint8_t
 readMuxPort() noexcept {
-    digitalWrite<i960Pinout::MUXADR0, pattern & 0b001 ? HIGH : LOW>();
-    digitalWrite<i960Pinout::MUXADR1, pattern & 0b010 ? HIGH : LOW>();
-    digitalWrite<i960Pinout::MUXADR2, pattern & 0b100 ? HIGH : LOW>();
-    digitalWrite<i960Pinout::MUX_EN, LOW>();
+    MuxLines outCtl(DigitalPin<i960Pinout::MUXSel0>::readOutPort());
+    outCtl.muxIndex = pattern;
+    outCtl.enable = 0;
+    DigitalPin<i960Pinout::MUXADR0>::writeOutPort(outCtl.value);
+    outCtl.enable = 1;
     MuxLines inCtl(DigitalPin<i960Pinout::MUXADR0>::readInPort());
-    digitalWrite<i960Pinout::MUX_EN, HIGH>();
+    DigitalPin<i960Pinout::MUXADR0>::writeOutPort(outCtl.value);
     return inCtl.data;
 }
 void
