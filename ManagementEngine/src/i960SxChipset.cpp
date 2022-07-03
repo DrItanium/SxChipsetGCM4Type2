@@ -112,7 +112,7 @@ setupPins() noexcept {
             EnterTransactionPin
     >();
     // the lock pin is special as it is an open collector pin, we want to stay off of it as much as possible
-    pinMode(i960Pinout::LOCK_, OUTPUT);
+    pinMode(static_cast<int>(i960Pinout::LOCK_), OUTPUT);
     digitalWrite<i960Pinout::LOCK_, HIGH>();
     DoCyclePin ::deassertPin();
     ReadySyncPin :: deassertPin();

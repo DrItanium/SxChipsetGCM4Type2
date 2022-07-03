@@ -95,11 +95,6 @@ inline void digitalWrite(T ip, decltype(HIGH) value) {
 
 template<typename T>
 [[gnu::always_inline]]
-inline void pinMode(T ip, decltype(INPUT) value) {
-    pinMode(static_cast<int>(ip), value);
-}
-template<typename T>
-[[gnu::always_inline]]
 inline auto digitalRead(T ip) {
     return digitalRead<T>(ip);
 }
