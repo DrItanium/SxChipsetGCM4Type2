@@ -322,6 +322,7 @@ void loop() {
                // for example, the GCM4 runs at 120MHz while this chip runs at 20MHz. Making the chipset wait provides implicit
                // synchronization
                if (BlastPin::inputAsserted()) {
+                   // set BLAST LOW
                    BurstNext ::deassertPin();
                } else {
                    BurstNext ::assertPin();
@@ -338,8 +339,12 @@ void loop() {
                }
                // we are dealing with a burst transaction at this point
                waitForCycleEnd();
-               // let the chipset know that the operation will continue
-               informCPUAndWait();
+               {
+                   // let the chipset know that the operation will continue
+                   // we repurpose the burst pin for the original purpose of active high implying a continue state!
+                   PinAsserter<BurstNext> letChipsetKnowBurstNext;
+                   informCPUAndWait();
+               }
            }
            // the end of the current transaction needs to be straighline code
            waitForCycleEnd();
