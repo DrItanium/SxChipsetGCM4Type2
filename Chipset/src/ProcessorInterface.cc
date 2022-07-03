@@ -100,13 +100,11 @@ ProcessorInterface::begin() noexcept {
 template<uint8_t pattern>
 uint8_t
 readMuxPort() noexcept {
-    MuxLines outCtl(DigitalPin<i960Pinout::MUXSel0>::readOutPort());
-    outCtl.muxIndex = pattern;
-    outCtl.enable = 0;
-    DigitalPin<i960Pinout::MUXADR0>::writeOutPort(outCtl.value);
-    outCtl.enable = 1;
+    digitalWrite<i960Pinout::MUXADR0, pattern & 0b001 ? HIGH : LOW>();
+    digitalWrite<i960Pinout::MUXADR1, pattern & 0b010 ? HIGH : LOW>();
+    digitalWrite<i960Pinout::MUXADR2, pattern & 0b100 ? HIGH : LOW>();
+    digitalWrite<i960Pinout::MUX_EN, LOW>();
     MuxLines inCtl(DigitalPin<i960Pinout::MUXADR0>::readInPort());
-    DigitalPin<i960Pinout::MUXADR0>::writeOutPort(outCtl.value);
     digitalWrite<i960Pinout::MUX_EN, HIGH>();
     return inCtl.data;
 }
@@ -114,11 +112,15 @@ void
 ProcessorInterface::newAddress() noexcept {
     // update the address here
     auto lowest = readMuxPort<0>();
+    Serial.print(F("LOWEST: 0x")); Serial.println(lowest, HEX);
     isWriteOperation_ = lowest & 0b1;
     lowest &= 0b1111'1110; // clear the W/R bit out
     auto lower = readMuxPort<1>();
+    Serial.print(F("Lower : 0x")); Serial.println(lower, HEX);
     auto higher = readMuxPort<2>();
+    Serial.print(F("Higher: 0x")); Serial.println(higher, HEX);
     auto highest = readMuxPort<3>();
+    Serial.print(F("Highest: 0x")); Serial.println(highest, HEX);
     address_ = SplitWord32{lowest, lower, higher, highest};
     Serial.print(F("ADDRESS: 0x"));
     Serial.println(address_.getWholeValue(), HEX);
