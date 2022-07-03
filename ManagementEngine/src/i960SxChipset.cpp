@@ -100,7 +100,6 @@ setupPins() noexcept {
             WaitingForTransactionPin,
             BlastPin ,
             Den960 ,
-            LockPin,
             FailOutPin,
             ChipsetBootedPin,
             PICBootedPin,
