@@ -115,15 +115,15 @@ readMuxPort(uint8_t pattern) noexcept {
 void
 ProcessorInterface::newAddress() noexcept {
     auto lowest = readMuxPort(0);
-    Serial.print(F("ind 0: 0b")); Serial.println(lowest, BIN);
+    //Serial.print(F("ind 0: 0b")); Serial.println(lowest, BIN);
     isWriteOperation_ = lowest & 0b1;
     lowest &= 0b1111'1110; // clear the W/R bit out
     auto lower = readMuxPort(1);
-    Serial.print(F("ind 1: 0b")); Serial.println(lower, BIN);
+    //Serial.print(F("ind 1: 0b")); Serial.println(lower, BIN);
     auto higher = readMuxPort(2);
-    Serial.print(F("ind 2: 0b")); Serial.println(higher, BIN);
+    //Serial.print(F("ind 2: 0b")); Serial.println(higher, BIN);
     auto highest = readMuxPort(3);
-    Serial.print(F("ind 3: 0b")); Serial.println(highest, BIN);
+    //Serial.print(F("ind 3: 0b")); Serial.println(highest, BIN);
     address_ = SplitWord32{lowest, lower, higher, highest};
     Serial.print(F("ADDRESS: 0x"));
     Serial.println(address_.getWholeValue(), HEX);
