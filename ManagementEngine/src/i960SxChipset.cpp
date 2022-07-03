@@ -88,7 +88,10 @@ using ReadySyncPin = ActiveLowOutputPin<i960Pinout::ME_Ready>;
 using ReadyInputPin = ActiveLowInputPin<i960Pinout::READY_CHIPSET_>;
 using InTransactionPin = ActiveLowOutputPin<i960Pinout::InTransaction_>;
 using BurstNext = ActiveHighOutputPin<i960Pinout::BurstLast_>;
-using ResetPin = ActiveLowOutputPin<i960Pinout::RESET960_>;
+// Type2 connects this pin to an inverter externally so we can attach a pullup to this output pin
+// It allows the i960 to be forced into reset until the management engine is actively controlling it.
+// It prevents all sorts of shenanigans
+using ResetPin = ActiveHighOutputPin<i960Pinout::RESET960_>;
 using TheI960InResetPin = ActiveLowOutputPin<i960Pinout::ME_HOLDING_I960_IN_RESET>;
 using TheI960SuccessfullyBooted = ActiveLowOutputPin<i960Pinout::ME_NOTES_SUCCESSFUL_I960_BOOT>;
 using EnterTransactionPin = ActiveLowOutputPin<i960Pinout::InCycle>;
