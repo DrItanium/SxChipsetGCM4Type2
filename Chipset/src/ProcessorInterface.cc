@@ -100,52 +100,42 @@ ProcessorInterface::begin() noexcept {
 template<uint8_t pattern>
 uint8_t
 readMuxPort() noexcept {
-    digitalWrite<i960Pinout::MUX_EN, LOW>();
+    Serial.print(F("PATTERN: 0b"));
+    Serial.println(pattern & 0b111, BIN);
     digitalWrite<i960Pinout::MUXSel0, pattern & 0b001 ? HIGH : LOW>();
     digitalWrite<i960Pinout::MUXSel1, pattern & 0b010 ? HIGH : LOW>();
     digitalWrite<i960Pinout::MUXSel2, pattern & 0b100 ? HIGH : LOW>();
     volatile auto result = DigitalPin<i960Pinout::MUXADR0>::readInPort();
-    digitalWrite<i960Pinout::MUX_EN, HIGH>();
     return static_cast<uint8_t>(result >> 16);
 }
 namespace {
     void
     displayPortContents() noexcept {
-        digitalWrite<i960Pinout::MUX_EN, LOW>();
         Serial.print(F("\tIN: 0x"));
         Serial.print(DigitalPin<i960Pinout::MUXSel0>::readInPort(), HEX);
         Serial.print(F(", OUT: 0x"));
         Serial.println(DigitalPin<i960Pinout::MUXSel0>::readOutPort(), HEX);
-        digitalWrite<i960Pinout::MUX_EN, HIGH>();
     }
 }
 void
 ProcessorInterface::newAddress() noexcept {
-    displayPortContents();
+    //displayPortContents();
     // update the address here
     auto lowest = readMuxPort<0>();
-    Serial.print(F("ind 0: 0x")); Serial.println(lowest, HEX);
-    displayPortContents();
+    //Serial.print(F("ind 0: 0x")); Serial.println(lowest, HEX); displayPortContents();
     isWriteOperation_ = lowest & 0b1;
     lowest &= 0b1111'1110; // clear the W/R bit out
     auto lower = readMuxPort<1>();
-    Serial.print(F("ind 1: 0x")); Serial.println(lower, HEX);
-    displayPortContents();
+    //Serial.print(F("ind 1: 0x")); Serial.println(lower, HEX); displayPortContents();
     auto higher = readMuxPort<2>();
-    Serial.print(F("ind 2: 0x")); Serial.println(higher, HEX);
-    displayPortContents();
+    //Serial.print(F("ind 2: 0x")); Serial.println(higher, HEX); displayPortContents();
     auto highest = readMuxPort<3>();
-    Serial.print(F("ind 3: 0x")); Serial.println(highest, HEX);
-    displayPortContents();
+    //Serial.print(F("ind 3: 0x")); Serial.println(highest, HEX); displayPortContents();
     address_ = SplitWord32{lowest, lower, higher, highest};
-    Serial.print(F("ind 4: 0x")); Serial.println(readMuxPort<4>(), HEX);
-    displayPortContents();
-    Serial.print(F("ind 5: 0x")); Serial.println(readMuxPort<5>(), HEX);
-    displayPortContents();
-    Serial.print(F("ind 6: 0x")); Serial.println(readMuxPort<6>(), HEX);
-    displayPortContents();
-    Serial.print(F("ind 7: 0x")); Serial.println(readMuxPort<7>(), HEX);
-    displayPortContents();
+    //Serial.print(F("ind 4: 0x")); Serial.println(readMuxPort<4>(), HEX); displayPortContents();
+    //Serial.print(F("ind 5: 0x")); Serial.println(readMuxPort<5>(), HEX); displayPortContents();
+    // Serial.print(F("ind 6: 0x")); Serial.println(readMuxPort<6>(), HEX); displayPortContents();
+    // Serial.print(F("ind 7: 0x")); Serial.println(readMuxPort<7>(), HEX); displayPortContents();
     Serial.print(F("ADDRESS: 0x"));
     Serial.println(address_.getWholeValue(), HEX);
 }
