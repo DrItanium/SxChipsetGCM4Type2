@@ -117,4 +117,45 @@ template<typename ... pins>
 inline void deassertPins() noexcept {
     (pins::deassertPin(), ...);
 }
+template<auto pin, decltype(HIGH) value>
+[[gnu::always_inline]]
+inline void digitalWrite() noexcept {
+    digitalWrite(pin, value);
+}
+template<auto pin>
+[[gnu::always_inline]]
+inline void digitalWrite(decltype(HIGH) value) noexcept {
+    digitalWriteFast(static_cast<int>(pin), value);
+}
+template<auto pin>
+[[gnu::always_inline]] inline void digitalWrite(bool level) noexcept {
+    digitalWriteFast(static_cast<int>(pin), level ? HIGH : LOW);
+}
+
+template<auto pin, decltype(HIGH) asserted = LOW>
+[[gnu::always_inline]]
+inline void pulse() noexcept {
+    static constexpr auto deasserted = asserted == LOW ? HIGH : LOW;
+    // use the switch to value to compute what to revert to
+    digitalWrite<pin, asserted>();
+    __builtin_avr_nops(4);
+    digitalWrite<pin, deasserted>();
+}
+
+template<auto pin>
+[[gnu::always_inline]]
+inline auto digitalRead() noexcept {
+    return digitalReadFast(static_cast<int>(pin));
+}
+
+
+
+
+template<typename T>
+class PinAsserter {
+public:
+    static_assert(T::isOutputPin());
+    PinAsserter() { T::assertPin(); }
+    ~PinAsserter() { T::deassertPin(); }
+};
 #endif //MANAGEMENTENGINE_PINOUT_H
