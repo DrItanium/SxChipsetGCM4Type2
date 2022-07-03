@@ -153,7 +153,7 @@ enum class i960Pinout : int {
     //
     ME_Ready = PIN_PF0,
     InCycle = PIN_PF1,
-    ME_PF2 = PIN_PF2,
+    WaitingForTransaction = PIN_PF2,
     READY960 = PIN_PF3, // connected to external inverter, CCL connector
     READY_CHIPSET_ = PIN_PF4, // comes from chipset
     DEN960 = PIN_PF5,
@@ -274,6 +274,7 @@ using ResetPin = OutputPin<i960Pinout::RESET960_, LOW, HIGH>;
 using TheI960InResetPin = OutputPin<i960Pinout::ME_HOLDING_I960_IN_RESET, LOW, HIGH>;
 using TheI960SuccessfullyBooted = OutputPin<i960Pinout::ME_NOTES_SUCCESSFUL_I960_BOOT, LOW, HIGH>;
 using EnterTransactionPin = OutputPin<i960Pinout::InCycle, LOW, HIGH>;
+using WaitingForTransactionPin = OutputPin<i960Pinout::WaitingForTransaction, LOW, HIGH>;
 
 template<typename ... pins>
 [[gnu::always_inline]]
@@ -288,6 +289,7 @@ inline void deassertPins() noexcept {
 void
 setupPins() noexcept {
     configurePins<FailPin,
+            WaitingForTransactionPin,
             BlastPin ,
             Den960 ,
             LockPin,
@@ -311,6 +313,7 @@ setupPins() noexcept {
     FailOutPin :: deassertPin();
     TheI960SuccessfullyBooted :: deassertPin();
     EnterTransactionPin :: deassertPin();
+    WaitingForTransactionPin :: deassertPin();
     // make all outputs deasserted
 }
 template<i960Pinout pin, decltype(HIGH) value>
@@ -508,9 +511,11 @@ void loop() {
     for (;;) {
         // introduce some delay to make sure the bus has time to recover properly
         waitOneBusCycle();
+        WaitingForTransactionPin::assertPin();
         // okay so we need to wait for DEN to go low
         while (Den960::inputDeasserted());
         EnterTransactionPin :: assertPin();
+        WaitingForTransactionPin::deassertPin();
         if (numCycles >= currentConfiguration.getMaxNumberOfCyclesBeforePause()) {
             // provide a pause/cooldown period after a new data request to make sure that the bus has time to "cool".
             // Failure to do so can cause very strange checksum failures / chipset faults to happen with the GCM4
