@@ -79,21 +79,20 @@ using Den960 = InputPin<i960Pinout::DEN960, LOW, HIGH>;
 using BlastPin = InputPin<i960Pinout::BLAST_, LOW, HIGH>;
 using FailPin = InputPin<i960Pinout::FAIL, HIGH, LOW>;
 using FailOutPin = OutputPin<i960Pinout::FAIL_SIG, HIGH, LOW>;
-using LockPin = InputPin<i960Pinout::LOCK_, LOW, HIGH>;
-using BootSuccessfulPin = OutputPin<i960Pinout::BootSuccessful_, HIGH, LOW>;
-using ChipsetBootedPin = InputPin<i960Pinout::CHIPSET_BOOTED_, LOW, HIGH>;
-using PICBootedPin = InputPin<i960Pinout::PIC_BOOTED_, LOW, HIGH>;
-using ClockReady = OutputPin<i960Pinout::CLK_READY_, LOW, HIGH>;
-using DoCyclePin = OutputPin<i960Pinout::DoCycle_, LOW, HIGH>;
-using ReadySyncPin = OutputPin<i960Pinout::ME_Ready, LOW, HIGH>;
-using ReadyInputPin = InputPin<i960Pinout::READY_CHIPSET_, LOW, HIGH>;
-using InTransactionPin = OutputPin<i960Pinout::InTransaction_, LOW, HIGH>;
-using BurstNext = OutputPin<i960Pinout::BurstLast_, HIGH, LOW>;
-using ResetPin = OutputPin<i960Pinout::RESET960_, LOW, HIGH>;
-using TheI960InResetPin = OutputPin<i960Pinout::ME_HOLDING_I960_IN_RESET, LOW, HIGH>;
-using TheI960SuccessfullyBooted = OutputPin<i960Pinout::ME_NOTES_SUCCESSFUL_I960_BOOT, LOW, HIGH>;
-using EnterTransactionPin = OutputPin<i960Pinout::InCycle, LOW, HIGH>;
-using WaitingForTransactionPin = OutputPin<i960Pinout::WaitingForTransaction, LOW, HIGH>;
+using BootSuccessfulPin = ActiveHighOutputPin<i960Pinout::BootSuccessful_>;
+using ChipsetBootedPin = ActiveLowInputPin<i960Pinout::CHIPSET_BOOTED_>;
+using PICBootedPin = ActiveLowInputPin<i960Pinout::PIC_BOOTED_>;
+using ClockReady = ActiveLowOutputPin<i960Pinout::CLK_READY_>;
+using DoCyclePin = ActiveLowOutputPin<i960Pinout::DoCycle_>;
+using ReadySyncPin = ActiveLowOutputPin<i960Pinout::ME_Ready>;
+using ReadyInputPin = ActiveLowInputPin<i960Pinout::READY_CHIPSET_>;
+using InTransactionPin = ActiveLowOutputPin<i960Pinout::InTransaction_>;
+using BurstNext = ActiveHighOutputPin<i960Pinout::BurstLast_>;
+using ResetPin = ActiveLowOutputPin<i960Pinout::RESET960_>;
+using TheI960InResetPin = ActiveLowOutputPin<i960Pinout::ME_HOLDING_I960_IN_RESET>;
+using TheI960SuccessfullyBooted = ActiveLowOutputPin<i960Pinout::ME_NOTES_SUCCESSFUL_I960_BOOT>;
+using EnterTransactionPin = ActiveLowOutputPin<i960Pinout::InCycle>;
+using WaitingForTransactionPin = ActiveLowOutputPin<i960Pinout::WaitingForTransaction>;
 
 void
 setupPins() noexcept {
@@ -114,7 +113,8 @@ setupPins() noexcept {
             EnterTransactionPin
     >();
     // the lock pin is special as it is an open collector pin, we want to stay off of it as much as possible
-    LockPin::configure(INPUT);
+    pinMode(i960Pinout::LOCK_, OUTPUT);
+    digitalWrite<i960Pinout::LOCK_, HIGH>();
     DoCyclePin ::deassertPin();
     ReadySyncPin :: deassertPin();
     InTransactionPin :: deassertPin();
