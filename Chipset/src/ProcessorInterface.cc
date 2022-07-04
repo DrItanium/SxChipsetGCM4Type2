@@ -106,27 +106,40 @@ setMuxChannel(uint8_t pattern) noexcept {
     // introduce a forced delay of a few cycles to make sure we switch at the appropriate speed, otherwise we read way too quickly after the update
     asm volatile ("nop");
 }
-uint8_t
+volatile uint8_t
 readMuxPort(uint8_t pattern) noexcept {
     setMuxChannel(pattern);
-    MuxLines result(DigitalPin<i960Pinout::MUXSel0>::readInPort());
-    return result.data;
+    return DigitalPin<i960Pinout::MUXADR0>::readInPort() >> 16;
 }
 void
 ProcessorInterface::newAddress() noexcept {
-    auto lowest = readMuxPort(0);
-    //Serial.print(F("ind 0: 0b")); Serial.println(lowest, BIN);
-    isWriteOperation_ = lowest & 0b1;
-    lowest &= 0b1111'1110; // clear the W/R bit out
-    auto lower = readMuxPort(1);
-    //Serial.print(F("ind 1: 0b")); Serial.println(lower, BIN);
-    auto higher = readMuxPort(2);
-    //Serial.print(F("ind 2: 0b")); Serial.println(higher, BIN);
-    auto highest = readMuxPort(3);
-    //Serial.print(F("ind 3: 0b")); Serial.println(highest, BIN);
-    address_ = SplitWord32{lowest, lower, higher, highest};
+    Serial.println(F("NEW ADDRESS!!!"));
+    volatile SplitWord32 theAddress(0);
+    for (int i = 0; i < 4; ++i) {
+        Serial.print(F("PATTERN: 0b"));
+        Serial.println(i, HEX);
+        digitalWrite(i960Pinout::MUXSel0,
+                     ((i & 0b001) != 0) ? HIGH : LOW);
+        digitalWrite(i960Pinout::MUXSel1,
+                     ((i & 0b010) != 0) ? HIGH : LOW);
+        digitalWrite(i960Pinout::MUXSel2,
+                     ((i & 0b100) != 0) ? HIGH : LOW);
+        if (volatile auto value = PORT->Group[PORTA].IN.bit.IN; i == 0) {
+            isWriteOperation_ = value & 0b1;
+            value &= 0b1111'1110;
+            theAddress.bytes[i] = static_cast<uint8_t>(value);
+        } else {
+            theAddress.bytes[i] = static_cast<uint8_t>(value);
+            Serial.print(F("\tFirst Attempt: 0b")); Serial.println(value, BIN);
+            volatile auto value2 = PORT->Group[PORTA].IN.reg;
+            Serial.print(F("\tSecond Attempt: 0b")); Serial.println(value2, BIN);
+            volatile auto value3 = PORT->Group[PORTA].IN.reg;
+            Serial.print(F("\tFourth Attempt: 0b")); Serial.println(value3, BIN);
+        }
+    }
     Serial.print(F("ADDRESS: 0x"));
-    Serial.println(address_.getWholeValue(), HEX);
+    Serial.println(theAddress.wholeValue_, HEX);
+    address_.wholeValue_ = theAddress.wholeValue_;
 }
 LoadStoreStyle
 ProcessorInterface::getStyle() noexcept {
