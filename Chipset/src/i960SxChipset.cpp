@@ -260,7 +260,7 @@ void setup() {
     ProcessorInterface::begin();
     BackingMemoryStorage_t::begin();
     setupMemoryMap();
-    installBootImage();
+    //installBootImage();
     delay(100);
     Serial.println(F("i960Sx chipset brought up fully!"));
     ManagementEngine::chipsetReady();

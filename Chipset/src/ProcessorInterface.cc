@@ -96,6 +96,7 @@ ProcessorInterface::setDataBits(uint16_t value) noexcept {
 };
 void
 ProcessorInterface::begin() noexcept {
+    PORT->Group[PORTA].CTRL.reg = 0x00FF0000;
 }
 void
 setMuxChannel(uint8_t pattern) noexcept {
@@ -115,31 +116,45 @@ void
 ProcessorInterface::newAddress() noexcept {
     Serial.println(F("NEW ADDRESS!!!"));
     volatile SplitWord32 theAddress(0);
-    for (int i = 0; i < 4; ++i) {
+
+    volatile MuxLines linesDir(PORT->Group[PORTA].DIR.reg);
+    linesDir.data = 0;
+    PORT->Group[PORTA].DIR.reg = linesDir.value;
+    for (int i = 0; i < 8; ++i) {
         Serial.print(F("PATTERN: 0b"));
         Serial.println(i, HEX);
-        digitalWrite(i960Pinout::MUXSel0,
-                     ((i & 0b001) != 0) ? HIGH : LOW);
-        digitalWrite(i960Pinout::MUXSel1,
-                     ((i & 0b010) != 0) ? HIGH : LOW);
-        digitalWrite(i960Pinout::MUXSel2,
-                     ((i & 0b100) != 0) ? HIGH : LOW);
-        if (volatile auto value = PORT->Group[PORTA].IN.bit.IN; i == 0) {
-            isWriteOperation_ = value & 0b1;
-            value &= 0b1111'1110;
-            theAddress.bytes[i] = static_cast<uint8_t>(value);
-        } else {
-            theAddress.bytes[i] = static_cast<uint8_t>(value);
-            Serial.print(F("\tFirst Attempt: 0b")); Serial.println(value, BIN);
-            volatile auto value2 = PORT->Group[PORTA].IN.reg;
-            Serial.print(F("\tSecond Attempt: 0b")); Serial.println(value2, BIN);
-            volatile auto value3 = PORT->Group[PORTA].IN.reg;
-            Serial.print(F("\tFourth Attempt: 0b")); Serial.println(value3, BIN);
+        {
+            volatile MuxLines lines(PORT->Group[PORTA].OUT.reg);
+            lines.muxIndex = i;
+            PORT->Group[PORTA].OUT.reg = lines.value;
+            for (volatile int i = 0; i < 32; ++i) {
+                asm volatile ("nop");
+            }
+        }
+        for (int j = 0; j < 16; ++j) {
+            volatile uint8_t value = 0;
+            value |= digitalRead(i960Pinout::MUXADR0) != LOW ? 0b00000001 : 0;
+            value |= digitalRead(i960Pinout::MUXADR1) != LOW ? 0b00000010 : 0;
+            value |= digitalRead(i960Pinout::MUXADR2) != LOW ? 0b00000100 : 0;
+            value |= digitalRead(i960Pinout::MUXADR3) != LOW ? 0b00001000 : 0;
+            value |= digitalRead(i960Pinout::MUXADR4) != LOW ? 0b00010000 : 0;
+            value |= digitalRead(i960Pinout::MUXADR5) != LOW ? 0b00100000 : 0;
+            value |= digitalRead(i960Pinout::MUXADR6) != LOW ? 0b01000000 : 0;
+            value |= digitalRead(i960Pinout::MUXADR7) != LOW ? 0b10000000 : 0;
+            if (i < 4) {
+                theAddress.bytes[i] = value;
+            }
+            Serial.print(F("\t")); Serial.print(j, HEX); Serial.print(F(": 0b")); Serial.println(value, BIN);
         }
     }
+    isWriteOperation_ = theAddress.bytes[0] & 0b1;
+    theAddress.bytes[0] &= 0b1111'1110;
     Serial.print(F("ADDRESS: 0x"));
     Serial.println(theAddress.wholeValue_, HEX);
     address_.wholeValue_ = theAddress.wholeValue_;
+    volatile MuxLines linesDir2(PORT->Group[PORTA].DIR.reg);
+    linesDir2.data = 0xFF;
+    PORT->Group[PORTA].DIR.reg = linesDir2.value;
 }
 LoadStoreStyle
 ProcessorInterface::getStyle() noexcept {
