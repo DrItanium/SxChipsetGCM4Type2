@@ -1,0 +1,25 @@
+GAL16V8
+Transparent8To2
+
+; pinout
+NC D0 D1 D2 D3 D4 D5 D6 D7 GND
+OE S0 S1 NC NC NC NC C0 C1 VCC
+
+C0 = D0 * /S0 * /S1 + D1 * S0 * /S1 + D2 * /S0 * S1 + D3 * S0 * S1
+C1 = D4 * /S0 * /S1 + D5 * S0 * /S1 + D6 * /S0 * S1 + D7 * S0 * S1
+
+
+DESCRIPTION
+
+Takes in eight data lines and multiplexes into two lines. Basically a much
+better designed HC153.
+
+PATTERN | C0 | C1
+0b00    | D0 | D4 
+0b01    | D1 | D5 
+0b10    | D2 | D6 
+0b11    | D3 | D7 
+
+
+
+

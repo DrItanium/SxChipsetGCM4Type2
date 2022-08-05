@@ -1,0 +1,17 @@
+GAL16V8
+Glue960
+
+; pinout
+Clock INT0 BE0 BE1 BLAST RDYI RSTI NC   NC       GND
+NC    NC   NC  NC  NC    RST9 RDY9 FAIL INT0960  VCC
+
+
+FAIL.R = BE0 * BE1 * /BLAST
+RDY9 = /RDYI
+RST9 = /RSTI
+INT0960 = /INT0
+
+
+DESCRIPTION
+
+i960 Glue Chip that assists the management engine
