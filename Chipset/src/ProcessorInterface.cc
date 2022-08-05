@@ -173,19 +173,11 @@ ProcessorInterface::newAddress() noexcept {
     // 7: A28, A29, A30, A31
     //
     // So the goal is to expand each byte into a 32-bit number that can be quickly combined
-    for (int j = 0; j < 4; ++j) {
-        address_.wholeValue_ = 0;
-        for (int i = 0; i < 4; ++i) {
-            volatile auto m = readMuxPort(i);
-            volatile uint32_t theAddress = ProperTranslationTable[i][m];
-            Serial.print(F("\t0b"));
-            Serial.print(m, BIN);
-            Serial.print(F(" -> A"));
-            Serial.print(i, DEC);
-            Serial.print(F(": 0b"));
-            Serial.println(theAddress, BIN);
-            address_.wholeValue_ |= theAddress;
-        }
+    address_.wholeValue_ = 0;
+    for (int i = 0; i < 4; ++i) {
+        volatile auto m = readMuxPort(i);
+        volatile uint32_t theAddress = ProperTranslationTable[i][m];
+        address_.wholeValue_ |= theAddress;
     }
     isWriteOperation_ = (address_.wholeValue_ & 0b1) != 0;
     address_.wholeValue_ &= 0xFFFF'FFFE;
