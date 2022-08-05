@@ -43,17 +43,6 @@ namespace
         explicit DataLines(uint32_t value) : value(value) {}
         explicit DataLines(uint16_t lower, uint16_t upper = 0) : halves{lower, upper} { }
     };
-    union MuxLines {
-        uint32_t value;
-        struct {
-            uint32_t unused0 : 16;
-            uint32_t data : 8;
-            uint32_t unused1 : 8;
-        };
-        explicit MuxLines(uint32_t value) : value(value) { }
-
-    };
-
 }
 void
 ProcessorInterface::setupDataLinesForWrite() noexcept {
@@ -85,12 +74,13 @@ ProcessorInterface::getDataBits() noexcept {
 }
 void
 ProcessorInterface::setDataBits(uint16_t value) noexcept {
-    DataLines lineRepresentation(value, 0);
+    volatile DataLines lineRepresentation(value, 0);
     DataLines outPort(DigitalPin<i960Pinout::Data0>::readOutPort());
     outPort.lowerPart = lineRepresentation.lowerPart;
     outPort.layout89 = lineRepresentation.real89;
     outPort.upperPartRest = lineRepresentation.upperPartRest;
-    DigitalPin<i960Pinout::Data0>::writeOutPort(outPort.getValue32());
+    volatile uint32_t result = outPort.getValue32();
+    DigitalPin<i960Pinout::Data0>::writeOutPort(result);
 };
 void
 ProcessorInterface::begin() noexcept {
@@ -103,7 +93,8 @@ setMuxChannel(uint8_t pattern) noexcept {
     digitalWrite<i960Pinout::MA1>(pattern & 0b10 ? HIGH : LOW);
 }
 volatile uint8_t
-readMuxPort(uint8_t) noexcept {
+readMuxPort(uint8_t pattern) noexcept {
+    setMuxChannel(pattern);
     return DigitalPin<i960Pinout::L0>::readInPort() >> 16;
 }
 struct TranslationTableEntry {
@@ -178,54 +169,31 @@ ProcessorInterface::newAddress() noexcept {
     // 7: A28, A29, A30, A31
     //
     // So the goal is to expand each byte into a 32-bit number that can be quickly combined
-    Serial.println(F("NEW ADDRESS!!!"));
-    volatile byte mux0 = 0, mux1 = 0, mux2 = 0, mux3 = 0;
-    for (int i = 0; i < 128; ++i) {
-        setMuxChannel(0b00);
-        auto result = DigitalPin<i960Pinout::L0>::readInPort();
-        Serial.print(F("\tMUX0 RESULT RAW 0x")); Serial.println(result, HEX);
-        mux0 = result >> 16;
-        Serial.print(F("MUX0: "));
-        Serial.println(mux0);
-        setMuxChannel(0b01);
-        result = DigitalPin<i960Pinout::L0>::readInPort();
-        Serial.print(F("\tMUX1 RESULT RAW 0x")); Serial.println(result, HEX);
-        mux1 = result >> 16;
-        Serial.print(F("MUX1: "));
-        Serial.println(mux1);
-        setMuxChannel(0b10);
-        result = DigitalPin<i960Pinout::L0>::readInPort();
-        Serial.print(F("\tMUX2 RESULT RAW 0x")); Serial.println(result, HEX);
-        mux2 = result >> 16;
-        Serial.print(F("MUX2: "));
-        Serial.println(mux2);
-        setMuxChannel(0b11);
-        result = DigitalPin<i960Pinout::L0>::readInPort();
-        Serial.print(F("\tMUX3 RESULT RAW 0x")); Serial.println(result, HEX);
-        mux3 = result >> 16;
-        Serial.print(F("MUX3: "));
-        Serial.println(mux3);
-    }
-    Serial.println();
-    Serial.println(mux0, HEX);
-    Serial.println(mux1, HEX);
-    Serial.println(mux2, HEX);
-    Serial.println(mux3, HEX);
-    uint32_t theAddress = ProperTranslationTable[0b00][mux0];
-    Serial.println(theAddress, HEX);
-    auto theAddress2 = ProperTranslationTable[0b01][mux1];
-    Serial.println(theAddress2, HEX);
-    auto theAddress3 = ProperTranslationTable[0b10][mux2];
-    Serial.println(theAddress3, HEX);
-    auto theAddress4 = ProperTranslationTable[0b11][mux3];
-    Serial.println(theAddress4, HEX);
-    isWriteOperation_ = theAddress & 0b1;
+    volatile uint32_t theAddress = ProperTranslationTable[0b00][readMuxPort(0b00)];
+    volatile auto theAddress2 = ProperTranslationTable[0b01][readMuxPort(0b01)];
+    volatile auto theAddress3 = ProperTranslationTable[0b10][readMuxPort(0b10)];
+    volatile auto theAddress4 = ProperTranslationTable[0b11][readMuxPort(0b11)];
+    isWriteOperation_ = (theAddress & 0b1) != 0;
     address_.wholeValue_ = theAddress | theAddress2 | theAddress3 | theAddress4;
     address_.wholeValue_ &= 0xFFFF'FFFE;
     Serial.print(F("ADDRESS: 0x"));
-    Serial.println(address_.wholeValue_ , HEX);
+    Serial.print(address_.wholeValue_ , HEX);
+    Serial.print(F(", OP: "));
+    Serial.println(isWriteOperation_ ? "WRITE" : "READ");
 }
 LoadStoreStyle
 ProcessorInterface::getStyle() noexcept {
-    return static_cast<LoadStoreStyle>((readMuxPort(4) >> 4) & 0b11);
+    if (DigitalPin<i960Pinout::BE0>::isAsserted()) {
+        if (DigitalPin<i960Pinout::BE1>::isAsserted()) {
+            return LoadStoreStyle::Full16;
+        } else {
+            return LoadStoreStyle::Lower8;
+        }
+    } else {
+        if (DigitalPin<i960Pinout::BE1>::isAsserted()) {
+            return LoadStoreStyle::Upper8;
+        } else {
+            return LoadStoreStyle::None;
+        }
+    }
 }
