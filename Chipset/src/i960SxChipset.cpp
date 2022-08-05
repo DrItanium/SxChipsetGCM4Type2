@@ -83,13 +83,14 @@ CoreChipsetFeatures configurationSpace;
 UART0Interface uart0;
 SPIMemorySpace spi0;
 TheSDInterface sdcard_(SD);
-Uart Serial2(&SERCOM_SERIAL2, PIN_SERIAL2_RX, PIN_SERIAL2_TX, PAD_SERIAL2_RX, PAD_SERIAL2_TX);
-Uart Serial3(&SERCOM_SERIAL3, PIN_SERIAL3_RX, PIN_SERIAL3_TX, PAD_SERIAL3_RX, PAD_SERIAL3_TX);
-Uart Serial4(&SERCOM_SERIAL4, PIN_SERIAL4_RX, PIN_SERIAL4_TX, PAD_SERIAL4_RX, PAD_SERIAL4_TX);
-auto& UnoUart = Serial1;
-auto& PicUart = Serial4;
-auto& Feather0Uart = Serial2;
-auto& Feather1Uart = Serial3;
+/// @todo reimplement
+//Uart Serial2(&SERCOM_SERIAL2, PIN_SERIAL2_RX, PIN_SERIAL2_TX, PAD_SERIAL2_RX, PAD_SERIAL2_TX);
+//Uart Serial3(&SERCOM_SERIAL3, PIN_SERIAL3_RX, PIN_SERIAL3_TX, PAD_SERIAL3_RX, PAD_SERIAL3_TX);
+//Uart Serial4(&SERCOM_SERIAL4, PIN_SERIAL4_RX, PIN_SERIAL4_TX, PAD_SERIAL4_RX, PAD_SERIAL4_TX);
+//auto& UnoUart = Serial1;
+//auto& PicUart = Serial4;
+//auto& Feather0Uart = Serial2;
+//auto& Feather1Uart = Serial3;
 //NullMemorySpace null_;
 
 template<bool inDebugMode>
@@ -201,18 +202,16 @@ setupDataLines() {
     DigitalPin<i960Pinout::Data15>::configure();
 }
 void setupMux() noexcept {
-    DigitalPin<i960Pinout::MUXADR0>::configure();
-    DigitalPin<i960Pinout::MUXADR1>::configure();
-    DigitalPin<i960Pinout::MUXADR2>::configure();
-    DigitalPin<i960Pinout::MUXADR3>::configure();
-    DigitalPin<i960Pinout::MUXADR4>::configure();
-    DigitalPin<i960Pinout::MUXADR5>::configure();
-    DigitalPin<i960Pinout::MUXADR6>::configure();
-    DigitalPin<i960Pinout::MUXADR7>::configure();
-    DigitalPin<i960Pinout::MUXSel0>::configure(); DigitalPin<i960Pinout::MUXSel0>::deassertPin();
-    DigitalPin<i960Pinout::MUXSel1>::configure(); DigitalPin<i960Pinout::MUXSel1>::deassertPin();
-    DigitalPin<i960Pinout::MUXSel2>::configure(); DigitalPin<i960Pinout::MUXSel2>::deassertPin();
-    DigitalPin<i960Pinout::MUX_EN>::configure(); DigitalPin<i960Pinout::MUX_EN>::assertPin();
+    DigitalPin<i960Pinout::L0>::configure();
+    DigitalPin<i960Pinout::L1>::configure();
+    DigitalPin<i960Pinout::L2>::configure();
+    DigitalPin<i960Pinout::L3>::configure();
+    DigitalPin<i960Pinout::L4>::configure();
+    DigitalPin<i960Pinout::L5>::configure();
+    DigitalPin<i960Pinout::L6>::configure();
+    DigitalPin<i960Pinout::L7>::configure();
+    DigitalPin<i960Pinout::MA0>::configure(); DigitalPin<i960Pinout::MA0>::deassertPin();
+    DigitalPin<i960Pinout::MA1>::configure(); DigitalPin<i960Pinout::MA1>::deassertPin();
 }
 void setup() {
     ManagementEngine::configure();
@@ -234,19 +233,28 @@ void setup() {
     while (!Serial) {
         delay(10);
     }
-    UnoUart.begin(115200);
-    Feather0Uart.begin(115200);
-    Feather1Uart.begin(115200);
-    PicUart.begin(115200);
+    //UnoUart.begin(115200);
+    //Feather0Uart.begin(115200);
+    //Feather1Uart.begin(115200);
+    //PicUart.begin(115200);
 
     SPI.begin();
     Wire.begin();
     DigitalPin<i960Pinout::SD_EN>::configure(); DigitalPin<i960Pinout::SD_EN>::deassertPin();
     DigitalPin<i960Pinout::Ready>::configure(); DigitalPin<i960Pinout::Ready>::deassertPin();
-    DigitalPin<i960Pinout::GPIOSelect>::configure(); DigitalPin<i960Pinout::GPIOSelect>::deassertPin();
+    //DigitalPin<i960Pinout::GPIOSelect>::configure(); DigitalPin<i960Pinout::GPIOSelect>::deassertPin();
     DigitalPin<i960Pinout::INT_EN0>::configure(); DigitalPin<i960Pinout::INT_EN0>::deassertPin();
-    DigitalPin<i960Pinout::Feather0_INT>::configure();
-    DigitalPin<i960Pinout::Feather1_INT>::configure();
+#define ConfigureFeatherCoprocessor(name) \
+    DigitalPin<i960Pinout:: name ## _Reset> :: configure();  \
+    DigitalPin<i960Pinout:: name ## _Reset>::assertPin(); \
+    DigitalPin<i960Pinout:: name ## _INT>::configure(); \
+    DigitalPin<i960Pinout:: name ## _Select> :: configure(); \
+                                          DigitalPin<i960Pinout:: name ## _Select>:: deassertPin(); \
+                                         DigitalPin<i960Pinout:: name ## _Reset > :: deassertPin()
+
+    ConfigureFeatherCoprocessor(F1);
+    ConfigureFeatherCoprocessor(F2);
+#undef ConfigureFeatherCoprocessor
     DigitalPin<i960Pinout::BusHold>::configure(); DigitalPin<i960Pinout::BusHold>::deassertPin();
     DigitalPin<i960Pinout::BusHold_Acknowledge>::configure();
     setupMux();
