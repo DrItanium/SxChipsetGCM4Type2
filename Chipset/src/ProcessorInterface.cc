@@ -70,14 +70,14 @@ SplitWord16
 ProcessorInterface::getDataBits() noexcept {
     DataLines tmp(DigitalPin<i960Pinout::Data0>::readInPort());
     tmp.real89 = tmp.layout89;
-    Serial.print(F("\t GET DATA BITS: 0x"));
-    Serial.println(tmp.getLowerHalf(), HEX);
+    //Serial.print(F("\t GET DATA BITS: 0x"));
+    //Serial.println(tmp.getLowerHalf(), HEX);
     return SplitWord16{tmp.getLowerHalf()};
 }
 void
 ProcessorInterface::setDataBits(uint16_t value) noexcept {
-    Serial.print(F("\tSET DATA BITS: 0x"));
-    Serial.println(value, HEX);
+    //Serial.print(F("\tSET DATA BITS: 0x"));
+    //Serial.println(value, HEX);
     volatile DataLines lineRepresentation(value, 0);
     DataLines outPort(DigitalPin<i960Pinout::Data0>::readOutPort());
     outPort.lowerPart = lineRepresentation.lowerPart;
@@ -173,17 +173,19 @@ ProcessorInterface::newAddress() noexcept {
     // 7: A28, A29, A30, A31
     //
     // So the goal is to expand each byte into a 32-bit number that can be quickly combined
-    address_.wholeValue_ = 0;
-    for (int i = 0; i < 4; ++i) {
-        volatile auto m = readMuxPort(i);
-        volatile uint32_t theAddress = ProperTranslationTable[i][m];
-        Serial.print(F("\t0b"));
-        Serial.print(m, BIN);
-        Serial.print(F(" -> A"));
-        Serial.print(i, DEC);
-        Serial.print(F(": 0b"));
-        Serial.println(theAddress, BIN);
-        address_.wholeValue_ |= theAddress;
+    for (int j = 0; j < 4; ++j) {
+        address_.wholeValue_ = 0;
+        for (int i = 0; i < 4; ++i) {
+            volatile auto m = readMuxPort(i);
+            volatile uint32_t theAddress = ProperTranslationTable[i][m];
+            Serial.print(F("\t0b"));
+            Serial.print(m, BIN);
+            Serial.print(F(" -> A"));
+            Serial.print(i, DEC);
+            Serial.print(F(": 0b"));
+            Serial.println(theAddress, BIN);
+            address_.wholeValue_ |= theAddress;
+        }
     }
     isWriteOperation_ = (address_.wholeValue_ & 0b1) != 0;
     address_.wholeValue_ &= 0xFFFF'FFFE;
