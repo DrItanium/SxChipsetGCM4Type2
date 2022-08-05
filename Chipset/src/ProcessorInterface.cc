@@ -70,10 +70,14 @@ SplitWord16
 ProcessorInterface::getDataBits() noexcept {
     DataLines tmp(DigitalPin<i960Pinout::Data0>::readInPort());
     tmp.real89 = tmp.layout89;
+    Serial.print(F("\t GET DATA BITS: 0x"));
+    Serial.println(tmp.getLowerHalf(), HEX);
     return SplitWord16{tmp.getLowerHalf()};
 }
 void
 ProcessorInterface::setDataBits(uint16_t value) noexcept {
+    Serial.print(F("\tSET DATA BITS: 0x"));
+    Serial.println(value, HEX);
     volatile DataLines lineRepresentation(value, 0);
     DataLines outPort(DigitalPin<i960Pinout::Data0>::readOutPort());
     outPort.lowerPart = lineRepresentation.lowerPart;
