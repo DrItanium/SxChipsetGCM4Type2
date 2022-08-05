@@ -122,6 +122,49 @@ struct TranslationTableEntry {
     uint32_t result_;
 };
 static_assert(TranslationTableEntry{0xFF}.getResult() == 0x1111'1111);
+static_assert(TranslationTableEntry{0xFF}.getResult() << 1 == 0x2222'2222);
+static_assert(TranslationTableEntry{0xFF}.getResult() << 2 == 0x4444'4444);
+static_assert(TranslationTableEntry{0xFF}.getResult() << 3 == 0x8888'8888);
+constexpr uint32_t BaseTranslationTable[256] {
+#define X(index) TranslationTableEntry(index).getResult()
+#define Y(base) X((8 * base) + 0), X((8 * base) + 1), X( 8* base + 2), X(8*base + 3), X(8*base + 4), X(8*base + 5), X(8*base + 6), X(8*base + 7)
+        Y(0), Y(1), Y(2), Y(3), Y(4), Y(5), Y(6), Y(7),
+        Y(8), Y(9), Y(10), Y(11), Y(12), Y(13), Y(14), Y(15),
+        Y(16), Y(17), Y(18), Y(19), Y(20), Y(21), Y(22), Y(23),
+        Y(24), Y(25), Y(26), Y(27), Y(28), Y(29), Y(30), Y(31),
+#undef Y
+#undef X
+};
+constexpr uint32_t ProperTranslationTable[4][256] {
+#define X(index, shift) BaseTranslationTable[index] << shift
+#define Y(base, shift) X((8 * base) + 0, shift), X((8 * base) + 1, shift), X( 8* base + 2, shift), X(8*base + 3, shift), X(8*base + 4, shift), X(8*base + 5, shift), X(8*base + 6, shift), X(8*base + 7, shift)
+        {
+                Y(0, 0), Y(1, 0), Y(2, 0), Y(3, 0), Y(4, 0), Y(5, 0), Y(6, 0), Y(7, 0),
+                Y(8, 0), Y(9, 0), Y(10, 0), Y(11, 0), Y(12, 0), Y(13, 0), Y(14, 0), Y(15, 0),
+                Y(16, 0), Y(17, 0), Y(18, 0), Y(19, 0), Y(20, 0), Y(21, 0), Y(22, 0), Y(23, 0),
+                Y(24, 0), Y(25, 0), Y(26, 0), Y(27, 0), Y(28, 0), Y(29, 0), Y(30, 0), Y(31, 0),
+        },
+        {
+                Y(0, 1), Y(1, 1), Y(2, 1), Y(3, 1), Y(4, 1), Y(5, 1), Y(6, 1), Y(7, 1),
+                Y(8, 1), Y(9, 1), Y(10, 1), Y(11, 1), Y(12, 1), Y(13, 1), Y(14, 1), Y(15, 1),
+                Y(16, 1), Y(17, 1), Y(18, 1), Y(19, 1), Y(20, 1), Y(21, 1), Y(22, 1), Y(23, 1),
+                Y(24, 1), Y(25, 1), Y(26, 1), Y(27, 1), Y(28, 1), Y(29, 1), Y(30, 1), Y(31, 1),
+        },
+        {
+                Y(0, 2), Y(1, 2), Y(2, 2), Y(3, 2), Y(4, 2), Y(5, 2), Y(6, 2), Y(7, 2),
+                Y(8, 2), Y(9, 2), Y(10, 2), Y(11, 2), Y(12, 2), Y(13, 2), Y(14, 2), Y(15, 2),
+                Y(16, 2), Y(17, 2), Y(18, 2), Y(19, 2), Y(20, 2), Y(21, 2), Y(22, 2), Y(23, 2),
+                Y(24, 2), Y(25, 2), Y(26, 2), Y(27, 2), Y(28, 2), Y(29, 2), Y(30, 2), Y(31, 2),
+        },
+        {
+                Y(0, 3), Y(1, 3), Y(2, 3), Y(3, 3), Y(4, 3), Y(5, 3), Y(6, 3), Y(7, 3),
+                Y(8, 3), Y(9, 3), Y(10, 3), Y(11, 3), Y(12, 3), Y(13, 3), Y(14, 3), Y(15, 3),
+                Y(16, 3), Y(17, 3), Y(18, 3), Y(19, 3), Y(20, 3), Y(21, 3), Y(22, 3), Y(23, 3),
+                Y(24, 3), Y(25, 3), Y(26, 3), Y(27, 3), Y(28, 3), Y(29, 3), Y(30, 3), Y(31, 3),
+        },
+#undef Y
+#undef X
+};
 void
 ProcessorInterface::newAddress() noexcept {
     // the mux data lines gives us data in the form of a compacted rectangle with each column being what you get
@@ -136,23 +179,16 @@ ProcessorInterface::newAddress() noexcept {
     // 7: A28, A29, A30, A31
     //
     // So the goal is to expand each byte into a 32-bit number that can be quickly combined
-    static constexpr uint32_t TranslationTable[256] {
-
-    };
     Serial.println(F("NEW ADDRESS!!!"));
-    volatile SplitWord32 theAddress(0);
-    theAddress.bytes[0] = readMuxPort(0b00);
-    theAddress.bytes[1] = readMuxPort(0b01);
-    theAddress.bytes[2] = readMuxPort(0b10);
-    theAddress.bytes[3] = readMuxPort(0b11);
-    isWriteOperation_ = theAddress.bytes[0] & 0b1;
-    theAddress.bytes[0] &= 0b1111'1110;
+    uint32_t theAddress = ProperTranslationTable[0b00][readMuxPort(0b00)];
+    theAddress |= ProperTranslationTable[0b01][readMuxPort(0b01)];
+    theAddress |= ProperTranslationTable[0b10][readMuxPort(0b10)];
+    theAddress |= ProperTranslationTable[0b11][readMuxPort(0b11)];
+    isWriteOperation_ = theAddress & 0b1;
+    theAddress &= 0xFFFF'FFFE;
     Serial.print(F("ADDRESS: 0x"));
-    Serial.println(theAddress.wholeValue_, HEX);
-    address_.wholeValue_ = theAddress.wholeValue_;
-    volatile MuxLines linesDir2(PORT->Group[PORTA].DIR.reg);
-    linesDir2.data = 0xFF;
-    PORT->Group[PORTA].DIR.reg = linesDir2.value;
+    Serial.println(theAddress, HEX);
+    address_.wholeValue_ = theAddress;
 }
 LoadStoreStyle
 ProcessorInterface::getStyle() noexcept {
