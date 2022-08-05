@@ -46,9 +46,7 @@ namespace
     union MuxLines {
         uint32_t value;
         struct {
-            uint32_t unused0 : 12;
-            uint32_t muxIndex : 3;
-            uint32_t enable : 1;
+            uint32_t unused0 : 16;
             uint32_t data : 8;
             uint32_t unused1 : 8;
         };
@@ -101,52 +99,52 @@ ProcessorInterface::begin() noexcept {
 void
 setMuxChannel(uint8_t pattern) noexcept {
     /// @todo use the OUTSET register to improve performance
-    MuxLines config (DigitalPin<i960Pinout::MUXSel0>::readOutPort());
-    config.muxIndex = pattern;
-    DigitalPin<i960Pinout::MUXSel0>::writeOutPort(config.value);
-    // introduce a forced delay of a few cycles to make sure we switch at the appropriate speed, otherwise we read way too quickly after the update
-    asm volatile ("nop");
+    digitalWrite<i960Pinout::MA0>(pattern & 0b1);
+    digitalWrite<i960Pinout::MA1>(pattern & 0b10);
 }
 volatile uint8_t
 readMuxPort(uint8_t pattern) noexcept {
     setMuxChannel(pattern);
-    return DigitalPin<i960Pinout::MUXADR0>::readInPort() >> 16;
+    return DigitalPin<i960Pinout::L0>::readInPort() >> 16;
 }
+struct TranslationTableEntry {
+    constexpr TranslationTableEntry(uint8_t value) noexcept :
+            result_(
+                    ((value & 0b0000'0001) ? (0b0001 << 0) : 0) |
+                    ((value & 0b0000'0010) ? (0b0001 << 4) : 0) |
+                    ((value & 0b0000'0100) ? (0b0001 << 8) : 0) |
+                    ((value & 0b0000'1000) ? (0b0001 << 12) : 0) |
+                    ((value & 0b0001'0000) ? (0b0001 << 16) : 0) |
+                    ((value & 0b0010'0000) ? (0b0001 << 20) : 0) |
+                    ((value & 0b0100'0000) ? (0b0001 << 24) : 0) |
+                    ((value & 0b1000'0000) ? (0b0001 << 28) : 0)) { }
+    [[nodiscard]] constexpr auto getResult() const noexcept {return result_; }
+    uint32_t result_;
+};
+static_assert(TranslationTableEntry{0xFF}.getResult() == 0x1111'1111);
 void
 ProcessorInterface::newAddress() noexcept {
+    // the mux data lines gives us data in the form of a compacted rectangle with each column being what you get
+    // I:  00,  01,  10,  11
+    // 0:  WR,  A1,  A2,  A3
+    // 1:  A4,  A5,  A6,  A7
+    // 2:  A8,  A9, A10, A11
+    // 3: A12, A13, A14, A15
+    // 4: A16, A17, A18, A19
+    // 5: A20, A21, A22, A23,
+    // 6: A24, A25, A26, A27,
+    // 7: A28, A29, A30, A31
+    //
+    // So the goal is to expand each byte into a 32-bit number that can be quickly combined
+    static constexpr uint32_t TranslationTable[256] {
+
+    };
     Serial.println(F("NEW ADDRESS!!!"));
     volatile SplitWord32 theAddress(0);
-
-    volatile MuxLines linesDir(PORT->Group[PORTA].DIR.reg);
-    linesDir.data = 0;
-    PORT->Group[PORTA].DIR.reg = linesDir.value;
-    for (int i = 0; i < 8; ++i) {
-        Serial.print(F("PATTERN: 0b"));
-        Serial.println(i, HEX);
-        {
-            volatile MuxLines lines(PORT->Group[PORTA].OUT.reg);
-            lines.muxIndex = i;
-            PORT->Group[PORTA].OUT.reg = lines.value;
-            for (volatile int i = 0; i < 32; ++i) {
-                asm volatile ("nop");
-            }
-        }
-        for (int j = 0; j < 16; ++j) {
-            volatile uint8_t value = 0;
-            value |= digitalRead(i960Pinout::MUXADR0) != LOW ? 0b00000001 : 0;
-            value |= digitalRead(i960Pinout::MUXADR1) != LOW ? 0b00000010 : 0;
-            value |= digitalRead(i960Pinout::MUXADR2) != LOW ? 0b00000100 : 0;
-            value |= digitalRead(i960Pinout::MUXADR3) != LOW ? 0b00001000 : 0;
-            value |= digitalRead(i960Pinout::MUXADR4) != LOW ? 0b00010000 : 0;
-            value |= digitalRead(i960Pinout::MUXADR5) != LOW ? 0b00100000 : 0;
-            value |= digitalRead(i960Pinout::MUXADR6) != LOW ? 0b01000000 : 0;
-            value |= digitalRead(i960Pinout::MUXADR7) != LOW ? 0b10000000 : 0;
-            if (i < 4) {
-                theAddress.bytes[i] = value;
-            }
-            Serial.print(F("\t")); Serial.print(j, HEX); Serial.print(F(": 0b")); Serial.println(value, BIN);
-        }
-    }
+    theAddress.bytes[0] = readMuxPort(0b00);
+    theAddress.bytes[1] = readMuxPort(0b01);
+    theAddress.bytes[2] = readMuxPort(0b10);
+    theAddress.bytes[3] = readMuxPort(0b11);
     isWriteOperation_ = theAddress.bytes[0] & 0b1;
     theAddress.bytes[0] &= 0b1111'1110;
     Serial.print(F("ADDRESS: 0x"));

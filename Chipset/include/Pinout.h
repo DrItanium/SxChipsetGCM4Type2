@@ -234,7 +234,7 @@ struct DigitalPinConfiguration<pin> { \
 #define DefSPICSPin2(pin) DefOutputPin2(pin, LOW, HIGH)
 
 
-DefSPICSPin2(i960Pinout::GPIOSelect);
+//DefSPICSPin2(i960Pinout::GPIOSelect);
 DefSPICSPin2(i960Pinout::SD_EN);
 DefOutputPin2(i960Pinout::ChipsetBooted, LOW, HIGH);
 DefOutputPin2(i960Pinout::Ready, LOW, HIGH);
@@ -263,22 +263,28 @@ DefBidirectionalPin2(i960Pinout::Data12, LOW, HIGH);
 DefBidirectionalPin2(i960Pinout::Data13, LOW, HIGH);
 DefBidirectionalPin2(i960Pinout::Data14, LOW, HIGH);
 DefBidirectionalPin2(i960Pinout::Data15, LOW, HIGH);
-DefBidirectionalPin2(i960Pinout::MUXADR0, LOW, HIGH);
-DefBidirectionalPin2(i960Pinout::MUXADR1, LOW, HIGH);
-DefBidirectionalPin2(i960Pinout::MUXADR2, LOW, HIGH);
-DefBidirectionalPin2(i960Pinout::MUXADR3, LOW, HIGH);
-DefBidirectionalPin2(i960Pinout::MUXADR4, LOW, HIGH);
-DefBidirectionalPin2(i960Pinout::MUXADR5, LOW, HIGH);
-DefBidirectionalPin2(i960Pinout::MUXADR6, LOW, HIGH);
-DefBidirectionalPin2(i960Pinout::MUXADR7, LOW, HIGH);
-DefOutputPin2(i960Pinout::MUXSel0, HIGH, LOW);
-DefOutputPin2(i960Pinout::MUXSel1, HIGH, LOW);
-DefOutputPin2(i960Pinout::MUXSel2, HIGH, LOW);
-DefOutputPin2(i960Pinout::MUX_EN, LOW, HIGH);
-DefInputPin2(i960Pinout::Feather0_INT, LOW, HIGH);
-DefInputPin2(i960Pinout::Feather1_INT, LOW, HIGH);
+DefBidirectionalPin2(i960Pinout::L0, LOW, HIGH);
+DefBidirectionalPin2(i960Pinout::L1, LOW, HIGH);
+DefBidirectionalPin2(i960Pinout::L2, LOW, HIGH);
+DefBidirectionalPin2(i960Pinout::L3, LOW, HIGH);
+DefBidirectionalPin2(i960Pinout::L4, LOW, HIGH);
+DefBidirectionalPin2(i960Pinout::L5, LOW, HIGH);
+DefBidirectionalPin2(i960Pinout::L6, LOW, HIGH);
+DefBidirectionalPin2(i960Pinout::L7, LOW, HIGH);
+DefOutputPin2(i960Pinout::MA0, HIGH, LOW);
+DefOutputPin2(i960Pinout::MA1, HIGH, LOW);
+#define DefFeatherCoprocessor(Name) \
+                                    DefInputPin2(i960Pinout:: Name ## _INT, LOW, HIGH); \
+                                    DefOutputPin2(i960Pinout:: Name ## _Select, LOW, HIGH); \
+                                    DefOutputPin2(i960Pinout:: Name ## _Reset, LOW, HIGH)
+DefFeatherCoprocessor(F1);
+DefFeatherCoprocessor(F2);
+#undef DefFeatherCoprocessor
+
 DefInputPin2(i960Pinout::BusHold_Acknowledge, HIGH, LOW);
 DefOutputPin2(i960Pinout::BusHold, HIGH, LOW);
+DefInputPin2(i960Pinout::BE0, LOW, HIGH);
+DefInputPin2(i960Pinout::BE1, LOW, HIGH);
 #undef DefOutputPin2
 #undef DefInputPin2
 #undef DefInputPullupPin2

@@ -10,34 +10,30 @@ UnoBreakout_A5 = PORT_B06,
 
 UnoBreakout_D0 = PORT_B25,
 UnoBreakout_D1 = PORT_B24,
-UnoBreakout_D2 = PORT_A04,
-UnoBreakout_D3 = PORT_A06,
-UnoBreakout_D4 = PORT_A07,
-UnoBreakout_D5 = PORT_B07,
-UnoBreakout_D6 = PORT_B08,
-UnoBreakout_D7 = PORT_B09,
-UnoBreakout_D8 = PORT_B14,
-UnoBreakout_D9 = PORT_B15,
+UnoBreakout_D2 = PORT_C18,
+UnoBreakout_D3 = PORT_C19,
+UnoBreakout_D4 = PORT_C20,
+UnoBreakout_D5 = PORT_C21,
+UnoBreakout_D6 = PORT_D20,
+UnoBreakout_D7 = PORT_D21,
+UnoBreakout_D8 = PORT_B18,
+UnoBreakout_D9 = PORT_B02,
 UnoBreakout_D10 = PORT_D10,
 UnoBreakout_D11 = PORT_D08,
 UnoBreakout_D12 = PORT_D11,
 UnoBreakout_D13 = PORT_D09,
 
-GPIOSelect = UnoBreakout_D10,
-
 // i960 Input Mux Breakout
-MUXSel0 = PORT_A12,
-MUXSel1 = PORT_A13,
-MUXSel2 = PORT_A14,
-MUX_EN = PORT_A15,
-MUXADR0 = PORT_A16,
-MUXADR1 = PORT_A17,
-MUXADR2 = PORT_A18,
-MUXADR3 = PORT_A19,
-MUXADR4 = PORT_A20,
-MUXADR5 = PORT_A21,
-MUXADR6 = PORT_A22,
-MUXADR7 = PORT_A23,
+MA0 = PORT_B14,
+MA1 = PORT_B15,
+L0 = PORT_A16,
+L1 = PORT_A17,
+L2 = PORT_A18,
+L3 = PORT_A19,
+L4 = PORT_A20,
+L5 = PORT_A21,
+L6 = PORT_A22,
+L7 = PORT_A23,
 
 // Data lines
 Data0 = PORT_C00,
@@ -60,45 +56,37 @@ Data13 = PORT_C13,
 Data14 = PORT_C14,
 Data15 = PORT_C15,
 
-// various control signals
-// serial connections to the feathers + interrupts
-Feather0_RX = PORT_B12,
-Feather0_TX = PORT_B13,
-Feather1_RX = PORT_C22,
-Feather1_TX = PORT_C23,
-Feather1_INT = PORT_B00,
-Feather0_INT = PORT_B01,
-
-// Serial connection to the Programmable Interrupt Controller
-PIC_RX = PORT_B16,
-PIC_TX = PORT_B17,
 
 // management engine control signals
-InTransaction = PORT_B23,
-DoCycle = PORT_B22,
-BurstNext = PORT_B02,
-SuccessfulBoot = PORT_B18,
+InTransaction = PORT_B00,
+DoCycle = PORT_B23,
+BurstNext = PORT_B22,
+SuccessfulBoot = PORT_C22,
 
 // extra i960 signals
-BusHold = PORT_D20,
-BusHold_Acknowledge = PORT_D21,
-INT_EN0 = PORT_C21,
-Reset4809 = PORT_C20,
-Ready = PORT_C18,
+BusHold = PORT_A12,
+BusHold_Acknowledge = PORT_C23,
+INT_EN0 = PORT_D12,
+Reset4809 = PORT_A13,
+Ready = PORT_A15,
 // all of the interrupts will be mapped to the same pin
 
-ChipsetBooted = PORT_C19,
+ChipsetBooted = PORT_B19,
 
 SD_EN = SDCARD_CS,
-#if 0
-W_R_ = AliasDeviceBase,       i960_A8  /* = Mux_BitB0 */ , i960_A16 /* = Mux_BitB0 */, i960_A24 /* = Mux_BitB0 */, i960_DT_R /* = Mux_BitB0 */,
-i960_A1 /* = Mux_BitB1 */,        i960_A9  /* = Mux_BitB1 */ , i960_A17 /* = Mux_BitB1 */, i960_A25 /* = Mux_BitB1 */, i960_BurstA1 /* = Mux_BitB1 */,
-i960_A2 /* = Mux_BitB2 */,        i960_A10 /* = Mux_BitB2 */ , i960_A18 /* = Mux_BitB2 */, i960_A26 /* = Mux_BitB2 */, i960_BurstA2 /* = Mux_BitB2 */,
-i960_A3 /* = Mux_BitB3 */,        i960_A11 /* = Mux_BitB3 */ , i960_A19 /* = Mux_BitB3 */, i960_A27 /* = Mux_BitB3 */, i960_BurstA3 /* = Mux_BitB3 */,
-i960_A4 /* = Mux_BitB4 */,        i960_A12 /* = Mux_BitB4 */ , i960_A20 /* = Mux_BitB4 */, i960_A28 /* = Mux_BitB4 */, BE0 /* = Mux_BitB4 */,
-i960_A5 /* = Mux_BitB5 */,        i960_A13 /* = Mux_BitB5 */ , i960_A21 /* = Mux_BitB5 */, i960_A29 /* = Mux_BitB5 */, BE1 /* = Mux_BitB5 */,
-i960_A6 /* = Mux_BitB6 */,        i960_A14 /* = Mux_BitB6 */ , i960_A22 /* = Mux_BitB6 */, i960_A30 /* = Mux_BitB6 */,
-i960_A7 /* = Mux_BitB7 */,        i960_A15 /* = Mux_BitB7 */ , i960_A23 /* = Mux_BitB7 */, i960_A31 /* = Mux_BitB7 */,
-WaitBoot960 /* = ChipsetBooted */,
-Reset960 /* = Reset4809 */,
-#endif
+BE0 = PORT_B12,
+BE1 = PORT_B13,
+
+// various control signals
+// serial connections to the feathers + interrupts
+#define DefFeatherCoprocessor(Name, RX, TX, INTR, RST, SEL) \
+    Name ## _RX = RX, \
+    Name ## _TX = TX, \
+    Name ## _INT = INTR, \
+    Name ## _Reset = RST, \
+    Name ## _Select = SEL
+
+DefFeatherCoprocessor(F1, PORT_B12, PORT_B13, PORT_B01, PORT_B07, PORT_A14),
+DefFeatherCoprocessor(F2, PORT_B08, PORT_B09, PORT_A04, PORT_A06, PORT_A07),
+
+#undef DefFeatherCoprocessor
