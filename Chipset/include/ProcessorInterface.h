@@ -55,6 +55,7 @@ public:
     template<bool inDebugMode>
     static void newDataCycle() noexcept {
         // read twice to see if we can't get around a really strange initial state problem
+        Serial.println(F("{"));
         newAddress();
         //delayMicroseconds(10); // this gets rid of a chipset halt problem that I'm not sure where is coming from
         //Serial.print(F("Address 0x")); Serial.println(address_.getWholeValue(), HEX);
@@ -65,6 +66,7 @@ public:
             setupDataLinesForWrite();
             getMemory().handleWriteRequest();
         }
+        Serial.println(F("}"));
     }
     static void begin() noexcept;
 private:

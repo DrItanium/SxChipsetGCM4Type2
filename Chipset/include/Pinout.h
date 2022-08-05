@@ -331,16 +331,22 @@ struct DigitalPin2 {
     }
     static constexpr auto getAssertionState() noexcept { return Configuration::getAssertionState(); }
     static constexpr auto getDeassertionState() noexcept { return Configuration::getDeassertionState(); }
+    template<bool useFastVersion = false>
     [[gnu::always_inline]]
     static inline auto read() noexcept {
-        if constexpr (isSpecialized()) {
-            if constexpr (isInputPin() || isInputPullupPin() || isInputPulldownPin()) {
-                return (targetPort_->IN.reg & readMask_) != 0 ? HIGH : LOW;
+        if constexpr (useFastVersion) {
+            if constexpr (isSpecialized()) {
+                if constexpr (isInputPin() || isInputPullupPin() || isInputPulldownPin()) {
+                    return (targetPort_->IN.reg & readMask_) != 0 ? HIGH : LOW;
+                } else {
+                    // if this is specialized but an output pin then return low every time
+                    return LOW;
+                }
             } else {
-                // if this is specialized but an output pin then return low every time
-                return LOW;
+                return ::digitalRead(getPin());
             }
         } else {
+            // in this case we always just want to use digitalRead since it is the safest to use
             return ::digitalRead(getPin());
         }
     }
@@ -369,21 +375,26 @@ struct DigitalPin2 {
         }
     }
 
-    template<decltype(LOW) value>
+    template<decltype(LOW) value, bool useFastVersion = false>
     [[gnu::always_inline]]
     static inline void write() noexcept {
-        if constexpr (isSpecialized()) {
-            if constexpr (isOutputPin()) {
-                if constexpr (value == LOW) {
-                    targetPort_->OUTCLR.reg = readMask_;
+        if constexpr (useFastVersion) {
+            if constexpr (isSpecialized()) {
+                if constexpr (isOutputPin()) {
+                    if constexpr (value == LOW) {
+                        targetPort_->OUTCLR.reg = readMask_;
+                    } else {
+                        targetPort_->OUTSET.reg = readMask_;
+                    }
                 } else {
-                    targetPort_->OUTSET.reg = readMask_;
+                    // do nothing
                 }
             } else {
-                // do nothing
+                // oh it isn't specialized so just call the normal digitalWrite to be on the safe side
+                ::digitalWrite(getPin(), value);
             }
         } else {
-            // oh it isn't specialized so just call the normal digitalWrite to be on the safe side
+            // just fall back to the digitalWrite operations to be on the safe side
             ::digitalWrite(getPin(), value);
         }
     }

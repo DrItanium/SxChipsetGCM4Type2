@@ -35,7 +35,9 @@ namespace ManagementEngine
     waitForCycleUnlock() noexcept {
         while (DigitalPin<i960Pinout::DoCycle>::isDeasserted());
     }
-    bool informCPU() noexcept {
+
+    bool
+    informCPU() noexcept {
         // don't pulse READY, instead just pull it low, the interrupt latency on the 4809 is horrible
         // so we just pull Ready high as soon as we get the next phase in.
         DigitalPin<i960Pinout::Ready>::assertPin();
@@ -47,7 +49,9 @@ namespace ManagementEngine
         DigitalPin<i960Pinout::Ready>::deassertPin();
         return outcome;
     }
-    void waitForBootSignal() noexcept {
+
+    void
+    waitForBootSignal() noexcept {
         while (DigitalPin<i960Pinout::SuccessfulBoot>::isDeasserted());
         attachInterrupt(i960Pinout::SuccessfulBoot,
                         []() { signalHaltState("CHECKSUM FAILURE"); },
