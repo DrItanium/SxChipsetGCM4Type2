@@ -34,41 +34,41 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 enum class i960Pinout : int {
     // PORT A
-    WaitingForCycleEnd = PIN_PA0,
-    WaitingForChipset = PIN_PA1,
-    ME_PA2 = PIN_PA2,
+    FAIL = PIN_PA0,
+    CHIPSET_BOOTED_ = PIN_PA1,
+    READY_CHIPSET_ = PIN_PA2,
     CLK = PIN_PA3,
     ME_PA4 = PIN_PA4,
     ME_PA5 = PIN_PA5,
     ME_PA6 = PIN_PA6,
     CLK2 = PIN_PA7,
     // PORT C
-    PIC_BOOTED_ = PIN_PC0,
-    CHIPSET_BOOTED_ = PIN_PC1,
-    ME_NOTES_SUCCESSFUL_I960_BOOT = PIN_PC2,
-    RESET960_ = PIN_PC3,
+    BurstLast_ = PIN_PC0,
+    InTransaction_ = PIN_PC1,
+    DoCycle_ = PIN_PC2,
+    BootSuccessful_ = PIN_PC3,
     UPDI_TXD = PIN_PC4,
     UPDI_RXD = PIN_PC5,
     // PORT D
-    BE1_ = PIN_PD0,
-    BE0_ = PIN_PD1,
-    BLAST_ = PIN_PD2,
-    FAIL_SIG = PIN_PD3,
-    FAIL = PIN_PD4,
-    LOCK_ = PIN_PD5,
-    CLK_READY_ = PIN_PD6,
-    ME_HOLDING_I960_IN_RESET = PIN_PD7,
-    //
-    BurstLast_ = PIN_PE0,
-    InTransaction_ = PIN_PE1,
-    DoCycle_ = PIN_PE2,
-    BootSuccessful_ = PIN_PE3,
-    //
+    CHIPSET_INT_ = PIN_PD0,
+    ME_PD1 = PIN_PD1,
+    ME_PD2 = PIN_PD2,
+    INT0_OUT = PIN_PD3,
+    ME_PD4 = PIN_PD4,
+    ME_PD5 = PIN_PD5,
+    ME_PD6 = PIN_PD6,
+    ME_PD7 = PIN_PD7,
+    // PORT E
+    ME_PE0 = PIN_PE0,
+    ME_PE1 = PIN_PE1,
+    ME_PE2 = PIN_PE2,
+    ME_PE3 = PIN_PE3,
+    // PORTF
     ME_Ready = PIN_PF0,
-    InCycle = PIN_PF1,
-    WaitingForTransaction = PIN_PF2,
+    ME_PF1 = PIN_PF1,
+    RESET960_ = PIN_PF2,
     READY960 = PIN_PF3, // connected to external inverter, CCL connector
-    READY_CHIPSET_ = PIN_PF4, // comes from chipset
+    BLAST_ = PIN_PF4, 
     DEN960 = PIN_PF5,
 };
 
@@ -78,11 +78,8 @@ enum class i960Pinout : int {
 using Den960 = InputPin<i960Pinout::DEN960, LOW, HIGH>;
 using BlastPin = InputPin<i960Pinout::BLAST_, LOW, HIGH>;
 using FailPin = InputPin<i960Pinout::FAIL, HIGH, LOW>;
-using FailOutPin = OutputPin<i960Pinout::FAIL_SIG, HIGH, LOW>;
 using BootSuccessfulPin = ActiveHighOutputPin<i960Pinout::BootSuccessful_>;
 using ChipsetBootedPin = ActiveLowInputPin<i960Pinout::CHIPSET_BOOTED_>;
-using PICBootedPin = ActiveLowInputPin<i960Pinout::PIC_BOOTED_>;
-using ClockReady = ActiveLowOutputPin<i960Pinout::CLK_READY_>;
 using DoCyclePin = ActiveLowOutputPin<i960Pinout::DoCycle_>;
 using ReadySyncPin = ActiveLowOutputPin<i960Pinout::ME_Ready>;
 using ReadyChipsetPin = ActiveLowInputPin<i960Pinout::READY_CHIPSET_>;
@@ -92,51 +89,30 @@ using BurstNext = ActiveHighOutputPin<i960Pinout::BurstLast_>;
 // It allows the i960 to be forced into reset until the management engine is actively controlling it.
 // It prevents all sorts of shenanigans
 using ResetPin = ActiveHighOutputPin<i960Pinout::RESET960_>;
-using TheI960InResetPin = ActiveLowOutputPin<i960Pinout::ME_HOLDING_I960_IN_RESET>;
-using TheI960SuccessfullyBooted = ActiveLowOutputPin<i960Pinout::ME_NOTES_SUCCESSFUL_I960_BOOT>;
-using EnterTransactionPin = ActiveLowOutputPin<i960Pinout::InCycle>;
-using WaitingForTransactionPin = ActiveLowOutputPin<i960Pinout::WaitingForTransaction>;
-using WaitingForCycleEndPin = ActiveLowOutputPin<i960Pinout::WaitingForCycleEnd>;
-using WaitingForChipsetPin = ActiveLowOutputPin<i960Pinout::WaitingForChipset>;
 
 void
 setupPins() noexcept {
     configurePins<FailPin,
-            WaitingForCycleEndPin ,
-            WaitingForTransactionPin,
-            WaitingForChipsetPin ,
             BlastPin ,
             Den960 ,
-            FailOutPin,
             ChipsetBootedPin,
-            PICBootedPin,
             DoCyclePin,
             ReadySyncPin,
             ReadyChipsetPin,
             InTransactionPin,
-            BurstNext,
-            TheI960SuccessfullyBooted,
-            EnterTransactionPin
+            BurstNext
     >();
     // the lock pin is special as it is an open collector pin, we want to stay off of it as much as possible
-    pinMode(static_cast<int>(i960Pinout::LOCK_), INPUT);
     DoCyclePin ::deassertPin();
     ReadySyncPin :: deassertPin();
     InTransactionPin :: deassertPin();
     BurstNext :: deassertPin();
-    FailOutPin :: deassertPin();
-    TheI960SuccessfullyBooted :: deassertPin();
-    EnterTransactionPin :: deassertPin();
-    WaitingForTransactionPin :: deassertPin();
-    WaitingForCycleEndPin :: deassertPin();
-    WaitingForChipsetPin :: deassertPin();
     // make all outputs deasserted
 }
 
 [[noreturn]]
 void
 terminateExecution() noexcept {
-    TheI960InResetPin :: assertPin();
     BootSuccessfulPin :: deassertPin();
     while(true) {
         delay(1000);
@@ -156,8 +132,6 @@ tooManyCyclesForTransaction() noexcept {
 
 void
 configureClockSource() noexcept {
-    ClockReady::configure();
-    ClockReady::deassertPin();
     CCP = 0xD8;
     CLKCTRL.MCLKCTRLA = 0b1000'0000;
     CCP = 0xD8;
@@ -234,8 +208,6 @@ setupCCL() noexcept {
 void setup() {
     ResetPin ::configure();
     ResetPin ::assertPin();
-    TheI960InResetPin ::configure();
-    TheI960InResetPin :: assertPin();
     BootSuccessfulPin :: configure();
     BootSuccessfulPin :: deassertPin();
     configureClockSource();
@@ -243,11 +215,8 @@ void setup() {
     setupPins();
     setupCCL();
     // at this point all of the clock sources are ready
-    ClockReady::assertPin();
     // now wait for chipset to boot and pic to be booted
     ChipsetBootedPin :: waitUntilPinIsAsserted();
-    PICBootedPin :: waitUntilPinIsAsserted();
-    TheI960InResetPin :: deassertPin();
     ResetPin :: deassertPin();
     // no need to wait for the chipset to release control
     while (FailPin::inputLow()) {
@@ -263,7 +232,6 @@ void setup() {
     BootSuccessfulPin::assertPin();
     // at this point, if we ever go from low to high again then we have a checksum failure
     attachInterrupt(digitalPinToInterrupt(static_cast<int>(i960Pinout::FAIL)), handleChecksumFail, RISING);
-    TheI960SuccessfullyBooted :: assertPin();
 }
 template<bool enable = currentConfiguration.enableOneCycleWaitStates()>
 [[gnu::always_inline]]
@@ -275,17 +243,13 @@ inline void waitOneBusCycle() noexcept {
 [[gnu::always_inline]]
 inline void informCPUAndWait() noexcept {
     ReadySyncPin :: pulse();
-    WaitingForChipsetPin :: assertPin();
     ReadyChipsetPin :: waitUntilPinIsDeasserted();
-    WaitingForChipsetPin :: deassertPin();
     waitOneBusCycle();
 }
 
 [[gnu::always_inline]]
 inline void waitForCycleEnd() noexcept {
-    WaitingForCycleEndPin :: assertPin();
     ReadyChipsetPin :: waitUntilPinIsAsserted();
-    WaitingForCycleEndPin :: deassertPin();
     BurstNext :: deassertPin();
     DoCyclePin ::deassertPin();
     waitOneBusCycle();
@@ -296,11 +260,8 @@ void loop() {
     for (;;) {
         // introduce some delay to make sure the bus has time to recover properly
         waitOneBusCycle();
-        WaitingForTransactionPin::assertPin();
         // okay so we need to wait for DEN to go low
         Den960 :: waitUntilPinIsAsserted();
-        EnterTransactionPin :: assertPin();
-        WaitingForTransactionPin::deassertPin();
         if (numCycles >= currentConfiguration.getMaxNumberOfCyclesBeforePause()) {
             // provide a pause/cooldown period after a new data request to make sure that the bus has time to "cool".
             // Failure to do so can cause very strange checksum failures / chipset faults to happen with the GCM4
@@ -355,7 +316,6 @@ void loop() {
         // let the i960 know and then wait for the chipset to pull MCU READY high
         informCPUAndWait();
         // to make sure the bus has time to recover we can introduce an i960 bus cycle worth of delay
-        EnterTransactionPin :: deassertPin();
         waitOneBusCycle();
     }
 }
