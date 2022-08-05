@@ -148,6 +148,7 @@ setup10MHz_CCL() noexcept {
     Event0.set_user(user::ccl0_event_a);
     Event1.set_generator(gen::ccl0_out);
     Event1.set_user(user::ccl3_event_b);
+    Event1.set_user(user::ccl2_event_b);
     Logic0.enable = true;
     Logic0.input0 = in::feedback; // route the result of the flipflop back to CCL0 to generate the divider effect
     Logic0.input1 = in::disable;
@@ -169,15 +170,18 @@ setup10MHz_CCL() noexcept {
     Event1.start();
 }
 void
-setupFailSignalDetector_CCL() noexcept {
+setupInterruptEdgeDetector_CCL() noexcept {
     Logic2.enable = true;
-    // BE0, BE1, ~BLAST -> 0b011
     Logic2.input0 = in::pin;
-    Logic2.input1 = in::pin;
-    Logic2.input2 = in::pin;
+    Logic2.input1 = in::disable;
+    Logic2.input2 = in::event_b;
     Logic2.output = out::enable;
     Logic2.sequencer = sequencer::disable;
-    Logic2.truth = 0b0000'1000;
+    Logic2.clocksource = clocksource::in2;
+    Logic2.edgedetect = edgedetect::enable;
+    Logic2.filter = filter::sync;
+    Logic2.sequencer = sequencer::disable;
+    Logic2.truth = 0b0001'0001;
     Logic2.init();
 }
 void
@@ -200,7 +204,7 @@ setupReadySignal_CCL() noexcept {
 void
 setupCCL() noexcept {
     setup10MHz_CCL();
-    setupFailSignalDetector_CCL();
+    setupInterruptEdgeDetector_CCL();
     setupReadySignal_CCL();
     Logic::start();
 }
