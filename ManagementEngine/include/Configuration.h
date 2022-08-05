@@ -33,7 +33,8 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 /// @todo implement a better configuration setup
 class TargetConfiguration {
 public:
-    enum Flags : uint16_t {
+    using FlagBackingKind = uint32_t;
+    enum Flags : FlagBackingKind {
 /**
  * @brief Is this board using an external 20Mhz clock source? If so configure the ME to use that instead
  */
@@ -82,21 +83,26 @@ public:
          * @brief Each check for waiting will be performed twice to make sure that transient modifications aren't fooling things
          */
         IntroduceDoubleChecks = 1 << 11,
+
+        /**
+         * @brief Use a CCL for synchronizing interrupt requests
+         */
+        InterruptEdgeDetection = 1 << 12,
     };
 
 public:
     constexpr explicit TargetConfiguration(Flags flags, byte version, byte cyclesBeforePause = 64) noexcept :
-            configuration_(static_cast<uint16_t>(flags)),
+            configuration_(static_cast<FlagBackingKind>(flags)),
             version_(version),
             maxNumberOfCyclesBeforePause_(cyclesBeforePause) { }
 
     template<Flags flag>
     [[nodiscard]] constexpr bool hasFlagSet() const noexcept {
-        return (configuration_ & static_cast<uint16_t>(flag)) != 0;
+        return (configuration_ & static_cast<FlagBackingKind>(flag)) != 0;
     }
     template<Flags flag>
     [[nodiscard]] constexpr bool hasFlagClear() const noexcept {
-        return (configuration_ & static_cast<uint16_t>(flag)) == 0;
+        return (configuration_ & static_cast<FlagBackingKind>(flag)) == 0;
     }
     constexpr auto useExternalClockSource() const noexcept { return hasFlagSet<Flags::HasExternalClockSource>(); }
     constexpr auto useInternalOscillator() const noexcept { return hasFlagClear<Flags::HasExternalClockSource>(); }
@@ -112,8 +118,9 @@ public:
     constexpr auto enableReadyPulseMode() const noexcept { return hasFlagSet<Flags::DoReadyPulseLoopMode>(); }
     constexpr auto enableTestReadyPinMode() const noexcept { return hasFlagSet<Flags::TestReadyPinMode>(); }
     constexpr auto performDoubleCheckLocks() const noexcept { return hasFlagSet<Flags::IntroduceDoubleChecks>(); }
+    constexpr auto performInterruptEdgeDetection() const noexcept { return hasFlagSet<Flags::InterruptEdgeDetection>(); }
 private:
-    uint16_t configuration_;
+    FlagBackingKind configuration_;
     byte version_;
     byte maxNumberOfCyclesBeforePause_;
 };

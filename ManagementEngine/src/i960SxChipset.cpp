@@ -89,7 +89,7 @@ using BurstNext = ActiveHighOutputPin<i960Pinout::BurstLast_>;
 // It allows the i960 to be forced into reset until the management engine is actively controlling it.
 // It prevents all sorts of shenanigans
 using ResetPin = ActiveHighOutputPin<i960Pinout::RESET960_>;
-
+using Interrupt960 = ActiveLowOutputPin<i960Pinout::INT0_OUT>;
 void
 setupPins() noexcept {
     configurePins<FailPin,
@@ -171,18 +171,25 @@ setup10MHz_CCL() noexcept {
 }
 void
 setupInterruptEdgeDetector_CCL() noexcept {
-    Logic2.enable = true;
-    Logic2.input0 = in::pin;
-    Logic2.input1 = in::disable;
-    Logic2.input2 = in::event_b;
-    Logic2.output = out::enable;
-    Logic2.sequencer = sequencer::disable;
-    Logic2.clocksource = clocksource::in2;
-    Logic2.edgedetect = edgedetect::enable;
-    Logic2.filter = filter::sync;
-    Logic2.sequencer = sequencer::disable;
-    Logic2.truth = 0b0001'0001;
-    Logic2.init();
+    if constexpr (currentConfiguration.performInterruptEdgeDetection()) {
+        Logic2.enable = true;
+        Logic2.input0 = in::pin;
+        Logic2.input1 = in::disable;
+        Logic2.input2 = in::event_b;
+        Logic2.output = out::enable;
+        Logic2.sequencer = sequencer::disable;
+        Logic2.clocksource = clocksource::in2;
+        Logic2.edgedetect = edgedetect::enable;
+        Logic2.filter = filter::sync;
+        Logic2.sequencer = sequencer::disable;
+        Logic2.truth = 0b0001'0001;
+        Logic2.init();
+    } else {
+        // make sure that we never use the interrupt edge detection by forcing
+        // it high
+        Interrupt960::configure(); 
+        Interrupt960::deassertPin();
+    }
 }
 void
 setupReadySignal_CCL() noexcept {

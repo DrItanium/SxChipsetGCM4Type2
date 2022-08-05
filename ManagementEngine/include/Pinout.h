@@ -127,7 +127,7 @@ template<auto pin>
 template<auto pin, decltype(HIGH) asserted = LOW>
 [[gnu::always_inline]]
 inline void pulse() noexcept {
-    static constexpr auto deasserted = asserted == LOW ? HIGH : LOW;
+    static constexpr auto deasserted = (asserted == LOW) ? HIGH : LOW;
     // use the switch to value to compute what to revert to
     digitalWrite<pin, asserted>();
     __builtin_avr_nops(4);
