@@ -241,19 +241,27 @@ template<bool enable = currentConfiguration.enableOneCycleWaitStates()>
 [[gnu::always_inline]]
 inline void waitOneBusCycle() noexcept {
     if constexpr (enable) {
-        __builtin_avr_nops(2);
+        // in this case lets wait at least two bus cycles to be on the safe
+        // side
+        __builtin_avr_nops(4);
     }
 }
 [[gnu::always_inline]]
 inline void informCPUAndWait() noexcept {
     ReadySyncPin :: pulse();
     ReadyChipsetPin :: waitUntilPinIsDeasserted();
+    if constexpr (currentConfiguration.performDoubleCheckLocks()) {
+        ReadyChipsetPin :: waitUntilPinIsDeasserted();
+    }
     waitOneBusCycle();
 }
 
 [[gnu::always_inline]]
 inline void waitForCycleEnd() noexcept {
     ReadyChipsetPin :: waitUntilPinIsAsserted();
+    if constexpr (currentConfiguration.performDoubleCheckLocks()) {
+        ReadyChipsetPin :: waitUntilPinIsAsserted();
+    }
     BurstNext :: deassertPin();
     DoCyclePin ::deassertPin();
     waitOneBusCycle();
@@ -266,6 +274,9 @@ void loop() {
         waitOneBusCycle();
         // okay so we need to wait for DEN to go low
         Den960 :: waitUntilPinIsAsserted();
+        if constexpr (currentConfiguration.performDoubleCheckLocks()) {
+            Den960 :: waitUntilPinIsAsserted();
+        }
         if (numCycles >= currentConfiguration.getMaxNumberOfCyclesBeforePause()) {
             // provide a pause/cooldown period after a new data request to make sure that the bus has time to "cool".
             // Failure to do so can cause very strange checksum failures / chipset faults to happen with the GCM4

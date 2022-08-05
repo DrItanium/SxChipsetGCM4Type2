@@ -78,6 +78,10 @@ public:
          * @brief Inspect the ready input signal to see what its value is
          */
         TestReadyPinMode = (1 << 10),
+        /**
+         * @brief Each check for waiting will be performed twice to make sure that transient modifications aren't fooling things
+         */
+        IntroduceDoubleChecks = 1 << 11,
     };
 
 public:
@@ -107,12 +111,14 @@ public:
     constexpr auto waitForSerialConnect() const noexcept { return hasFlagSet<Flags::WaitForSerialConnect>(); }
     constexpr auto enableReadyPulseMode() const noexcept { return hasFlagSet<Flags::DoReadyPulseLoopMode>(); }
     constexpr auto enableTestReadyPinMode() const noexcept { return hasFlagSet<Flags::TestReadyPinMode>(); }
+    constexpr auto performDoubleCheckLocks() const noexcept { return hasFlagSet<Flags::IntroduceDoubleChecks>(); }
 private:
     uint16_t configuration_;
     byte version_;
     byte maxNumberOfCyclesBeforePause_;
 };
 constexpr TargetConfiguration version2GCM {
+    TargetConfiguration::Flags::IntroduceDoubleChecks |
         TargetConfiguration::Flags::HandleResetManually |
         TargetConfiguration::Flags::EnableOneCycleWaitStates,
         2,
