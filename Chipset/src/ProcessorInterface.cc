@@ -94,30 +94,29 @@ ProcessorInterface::setDataBits(uint16_t value) noexcept {
 };
 void
 ProcessorInterface::begin() noexcept {
-    PORT->Group[PORTA].CTRL.reg = 0x00FF0000;
+    //PORT->Group[PORTA].CTRL.reg = 0x00FF0000;
 }
 void
 setMuxChannel(uint8_t pattern) noexcept {
     /// @todo use the OUTSET register to improve performance
-    digitalWrite<i960Pinout::MA0>(pattern & 0b1);
-    digitalWrite<i960Pinout::MA1>(pattern & 0b10);
+    digitalWrite<i960Pinout::MA0>(pattern & 0b1 ? HIGH : LOW);
+    digitalWrite<i960Pinout::MA1>(pattern & 0b10 ? HIGH : LOW);
 }
 volatile uint8_t
-readMuxPort(uint8_t pattern) noexcept {
-    setMuxChannel(pattern);
+readMuxPort(uint8_t) noexcept {
     return DigitalPin<i960Pinout::L0>::readInPort() >> 16;
 }
 struct TranslationTableEntry {
     constexpr TranslationTableEntry(uint8_t value) noexcept :
             result_(
-                    ((value & 0b0000'0001) ? (0b0001 << 0) : 0) |
-                    ((value & 0b0000'0010) ? (0b0001 << 4) : 0) |
-                    ((value & 0b0000'0100) ? (0b0001 << 8) : 0) |
-                    ((value & 0b0000'1000) ? (0b0001 << 12) : 0) |
-                    ((value & 0b0001'0000) ? (0b0001 << 16) : 0) |
-                    ((value & 0b0010'0000) ? (0b0001 << 20) : 0) |
-                    ((value & 0b0100'0000) ? (0b0001 << 24) : 0) |
-                    ((value & 0b1000'0000) ? (0b0001 << 28) : 0)) { }
+                    ((value & 0b0000'0001) ? 0x00000001 : 0) |
+                    ((value & 0b0000'0010) ? 0x00000010 : 0) |
+                    ((value & 0b0000'0100) ? 0x00000100 : 0) |
+                    ((value & 0b0000'1000) ? 0x00001000 : 0) |
+                    ((value & 0b0001'0000) ? 0x00010000 : 0) |
+                    ((value & 0b0010'0000) ? 0x00100000 : 0) |
+                    ((value & 0b0100'0000) ? 0x01000000 : 0) |
+                    ((value & 0b1000'0000) ? 0x10000000 : 0)) { }
     [[nodiscard]] constexpr auto getResult() const noexcept {return result_; }
     uint32_t result_;
 };
@@ -180,15 +179,51 @@ ProcessorInterface::newAddress() noexcept {
     //
     // So the goal is to expand each byte into a 32-bit number that can be quickly combined
     Serial.println(F("NEW ADDRESS!!!"));
-    uint32_t theAddress = ProperTranslationTable[0b00][readMuxPort(0b00)];
-    theAddress |= ProperTranslationTable[0b01][readMuxPort(0b01)];
-    theAddress |= ProperTranslationTable[0b10][readMuxPort(0b10)];
-    theAddress |= ProperTranslationTable[0b11][readMuxPort(0b11)];
-    isWriteOperation_ = theAddress & 0b1;
-    theAddress &= 0xFFFF'FFFE;
-    Serial.print(F("ADDRESS: 0x"));
+    volatile byte mux0 = 0, mux1 = 0, mux2 = 0, mux3 = 0;
+    for (int i = 0; i < 128; ++i) {
+        setMuxChannel(0b00);
+        auto result = DigitalPin<i960Pinout::L0>::readInPort();
+        Serial.print(F("\tMUX0 RESULT RAW 0x")); Serial.println(result, HEX);
+        mux0 = result >> 16;
+        Serial.print(F("MUX0: "));
+        Serial.println(mux0);
+        setMuxChannel(0b01);
+        result = DigitalPin<i960Pinout::L0>::readInPort();
+        Serial.print(F("\tMUX1 RESULT RAW 0x")); Serial.println(result, HEX);
+        mux1 = result >> 16;
+        Serial.print(F("MUX1: "));
+        Serial.println(mux1);
+        setMuxChannel(0b10);
+        result = DigitalPin<i960Pinout::L0>::readInPort();
+        Serial.print(F("\tMUX2 RESULT RAW 0x")); Serial.println(result, HEX);
+        mux2 = result >> 16;
+        Serial.print(F("MUX2: "));
+        Serial.println(mux2);
+        setMuxChannel(0b11);
+        result = DigitalPin<i960Pinout::L0>::readInPort();
+        Serial.print(F("\tMUX3 RESULT RAW 0x")); Serial.println(result, HEX);
+        mux3 = result >> 16;
+        Serial.print(F("MUX3: "));
+        Serial.println(mux3);
+    }
+    Serial.println();
+    Serial.println(mux0, HEX);
+    Serial.println(mux1, HEX);
+    Serial.println(mux2, HEX);
+    Serial.println(mux3, HEX);
+    uint32_t theAddress = ProperTranslationTable[0b00][mux0];
     Serial.println(theAddress, HEX);
-    address_.wholeValue_ = theAddress;
+    auto theAddress2 = ProperTranslationTable[0b01][mux1];
+    Serial.println(theAddress2, HEX);
+    auto theAddress3 = ProperTranslationTable[0b10][mux2];
+    Serial.println(theAddress3, HEX);
+    auto theAddress4 = ProperTranslationTable[0b11][mux3];
+    Serial.println(theAddress4, HEX);
+    isWriteOperation_ = theAddress & 0b1;
+    address_.wholeValue_ = theAddress | theAddress2 | theAddress3 | theAddress4;
+    address_.wholeValue_ &= 0xFFFF'FFFE;
+    Serial.print(F("ADDRESS: 0x"));
+    Serial.println(address_.wholeValue_ , HEX);
 }
 LoadStoreStyle
 ProcessorInterface::getStyle() noexcept {
